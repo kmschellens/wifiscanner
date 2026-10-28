@@ -6,7 +6,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-import dataset
+from app import dataset
 
 
 class AccesspointNamingTests(unittest.TestCase):

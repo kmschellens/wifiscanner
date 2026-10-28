@@ -14,22 +14,34 @@ Pak de ZIP uit en open Terminal in de uitgepakte map (bijvoorbeeld sleep de map 
 
 ```bash
 xcode-select --install   # Alleen nodig als Apple Command Line Tools nog ontbreken
-chmod +x wifi-kamermeting.sh build-scanner.sh start.sh
-./wifi-kamermeting.sh
+chmod +x start.sh
+./start.sh
 ```
 
-De begeleide terminalflow voert je met genummerde keuzes door vier stappen: Mac controleren, meetronde instellen, accesspoints voorbereiden en kamers meten. **Bij de eerste start** bouwt `build-scanner.sh` automatisch de lokale app `WifiKamermeting.app` uit `WifiScan.swift` en `Info.plist`. Xcode zelf is niet verplicht; de Command Line Tools volstaan. macOS kan vragen om Location Services: **Allow While Using App** voor **WifiKamermeting**. Geef die toestemming, want zonder deze toestemming kan CoreWLAN de BSSID van *andere* AP's verhullen, ook al werken de Shortcuts voor je verbonden AP.
+`start.sh` is het enige startpunt. Het hoofdmenu kan een meting starten of hervatten, het dashboard openen, de systeemcontrole uitvoeren en de lokale helper opnieuw bouwen. De begeleide meetflow voert je met genummerde keuzes door vier stappen: Mac controleren, meetronde instellen, accesspoints voorbereiden en kamers meten.
+
+De projectindeling is bewust eenvoudig:
+
+- `start.sh`: centrale launcher.
+- `app/`: interne scripts, Python-code, webinterface en Swift-broncode.
+- `data/`: persoonlijke meetbestanden; deze map wordt door Git genegeerd.
+- `.runtime/`: lokaal gebouwde macOS-app; deze map wordt door Git genegeerd.
+- `docs/`: documentatie.
+- `examples/`: uitsluitend geschoonde voorbeelddata.
+- `tests/`: automatische tests.
+
+**Bij de eerste meting** bouwt de applicatie automatisch `.runtime/WifiKamermeting.app` uit de bronbestanden in `app/`. Xcode zelf is niet verplicht; de Command Line Tools volstaan. macOS kan vragen om Location Services: **Allow While Using App** voor **WifiKamermeting**. Geef die toestemming, want zonder deze toestemming kan CoreWLAN de BSSID van *andere* AP's verhullen, ook al werken de Shortcuts voor je verbonden AP.
 
 Controleer bij problemen **System Settings → Privacy & Security → Location Services → WifiKamermeting**. Verwijder/verplaats de `.app` liever niet nadat je deze eenmaal autorisatie hebt gegeven. Wijzigen/recompileren kan ertoe leiden dat macOS opnieuw toestemming vraagt.
 
 Je bestaande Shortcuts heten nog steeds **`WiFi-SSID`** en **`WiFi-BSSID`**. Het Bash-script gebruikt ze om de *actuele verbinding* aan het begin en einde van de kamermeting vast te leggen.
 
-Bij problemen kun je apart `./wifi-kamermeting.sh --check` uitvoeren. Als deze controle zowel RSSI als **verschillende BSSID's** teruggeeft, werkt de scan op jouw Mac. Zie je geen BSSID's of staat er `denied`, dan zijn de onafhankelijke AP-scans nog niet bruikbaar; het script verzint in dat geval géén signalen.
+Bij problemen kun je apart `./start.sh controle` uitvoeren. Als deze controle zowel RSSI als **verschillende BSSID's** teruggeeft, werkt de scan op jouw Mac. Zie je geen BSSID's of staat er `denied`, dan zijn de onafhankelijke AP-scans nog niet bruikbaar; het script verzint in dat geval géén signalen.
 
 ## 2. Meetronde
 
 ```bash
-./wifi-kamermeting.sh
+./start.sh
 ```
 
 De applicatie stelt het huidige SSID voor, toont alle instellingen voordat de meting begint en laat tijdens iedere scan de verstreken tijd zien. Na een kamer verschijnt steeds hetzelfde menu:
@@ -42,7 +54,7 @@ De applicatie stelt het huidige SSID voor, toont alle instellingen voordat de me
 Na iedere kamer schrijft het script het **complete JSON-bestand atomair** weg. Een afgebroken ronde kun je later via het startmenu hervatten, of expliciet met:
 
 ```bash
-./wifi-kamermeting.sh --resume wifi-meting-YYYYMMDD-HHMMSS.json
+./start.sh meten --resume wifi-meting-YYYYMMDD-HHMMSS.json
 ```
 
 ### Accesspoints een naam geven
@@ -54,13 +66,13 @@ De koppeling wordt in het meetbestand opgeslagen en verschijnt automatisch in de
 De scans duren zelf ook enkele seconden. Standaard gebeurt er viermaal een scan, met twee seconden *pauze tussen* de scans. Wil je meer of minder:
 
 ```bash
-./wifi-kamermeting.sh --scans 6 --interval 3
+./start.sh meten --scans 6 --interval 3
 ```
 
-Standaard komt het meetbestand in dezelfde map als het meetscript. Je kunt vooraf ook een eigen bestandsnaam opgeven:
+Standaard komt het meetbestand in `data/`. Je kunt vooraf ook een eigen bestandsnaam opgeven; een losse bestandsnaam wordt eveneens in `data/` geplaatst:
 
 ```bash
-./wifi-kamermeting.sh "mijn-meting.json"
+./start.sh meten "mijn-meting.json"
 ```
 
 Bestaat dat bestand al, dan wordt het niet overschreven. Gebruik in dat geval `--resume` om bewust verder te gaan.
@@ -88,10 +100,10 @@ Wanneer CoreWLAN op jouw macOS de BSSID van alternatieve AP's afschermt, worden 
 ## 4. Dashboard
 
 ```bash
-./start.sh --open
+./start.sh dashboard
 ```
 
-Aan het einde van een meetronde biedt de terminalapp deze keuze automatisch aan. Los starten kan met het commando hierboven; de browser opent dan vanzelf op **http://127.0.0.1:8765**. `server.py` zoekt automatisch alle `.json`-meetbestanden in de map. Het dashboard heeft:
+Aan het einde van een meetronde biedt de terminalapp deze keuze automatisch aan. Los starten kan met het commando hierboven; de browser opent dan vanzelf op **http://127.0.0.1:8765**. De server zoekt automatisch alle `.json`-meetbestanden in `data/`. Het dashboard heeft:
 
 - Grafiek met **alle BSSID's per kamer**, ieder een eigen kleur.
 - Zelfgekozen accesspointnamen in legenda's, tabellen, grafieken en roamingsoverzichten.
@@ -99,12 +111,12 @@ Aan het einde van een meetronde biedt de terminalapp deze keuze automatisch aan.
 - Een sectie met **uitklapbare losse scans** per kamer.
 - De bestaande grafieken voor de *verbonden* AP, roamings en vergelijking van oudere JSON-bestanden blijven beschikbaar.
 
-Voor directe `index.html` zonder server kun je de JSON-bestanden met de knop **Open JSON-bestanden** selecteren. De lokale server gebruikt Python 3 zonder externe pakketten en luistert uitsluitend op 127.0.0.1.
+Voor direct gebruik van `app/index.html` zonder server kun je de JSON-bestanden met de knop **Open JSON-bestanden** selecteren. De lokale server gebruikt Python 3 zonder externe pakketten en luistert uitsluitend op 127.0.0.1.
 
 ## 5. Privacy en beperkingen
 
 De metingen verlaten jouw computer niet. De app gebruikt Location Services uitsluitend om macOS toestemming te laten geven voor Wi-Fi-identificaties; de code leest/schrijft geen geografische coördinaten. Dit is lokaal door jezelf te compileren, niet als vooraf gecompileerd programma ondertekend door een externe ontwikkelaar.
 
-Meetbestanden kunnen SSID's, BSSID's, kamernamen, notities en tijdstippen bevatten. Daarom negeert `.gitignore` bewust alle `*.json`-bestanden. Voeg een meetbestand nooit met `git add -f` toe. `VOORBEELD.multiap.json.voorbeeld` bevat uitsluitend synthetische netwerkgegevens en kan wel veilig worden gedeeld.
+Meetbestanden kunnen SSID's, BSSID's, kamernamen, notities en tijdstippen bevatten. Daarom negeert `.gitignore` zowel `data/` als alle `*.json`-bestanden. Voeg een meetbestand nooit met `git add -f` toe. `examples/VOORBEELD.multiap.json.voorbeeld` bevat uitsluitend synthetische netwerkgegevens en kan wel veilig worden gedeeld.
 
-**Getest:** syntax van Bash, Swift-broncode parsing, JavaScript-syntax en Python JSON-bewerking en AP-aggregatie met gesimuleerde datasets in een Linux-testomgeving. **Niet live getest op macOS 15.5:** Apple CoreWLAN is niet beschikbaar in deze omgeving. Controleer dus eerst `--check` op je Mac.
+**Getest:** syntax van Bash, Swift-broncode parsing, JavaScript-syntax en Python JSON-bewerking en AP-aggregatie met gesimuleerde datasets in een Linux-testomgeving. **Niet live getest op macOS 15.5:** Apple CoreWLAN is niet beschikbaar in deze omgeving. Controleer dus eerst `./start.sh controle` op je Mac.

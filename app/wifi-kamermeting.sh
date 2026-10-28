@@ -4,7 +4,10 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-APP="$DIR/WifiKamermeting.app"
+ROOT="$(cd "$DIR/.." && pwd)"
+DATA_DIR="$ROOT/data"
+RUNTIME_DIR="$ROOT/.runtime"
+APP="$RUNTIME_DIR/WifiKamermeting.app"
 DATASET=''
 RESUME_FILE=''
 RESUMING=0
@@ -23,15 +26,15 @@ help() {
 Wi-Fi kamermeting voor alle accesspoints met hetzelfde SSID.
 
 Normaal gebruik:
-  ./wifi-kamermeting.sh
+  ./start.sh
 
 De begeleide terminalflow controleert eerst je Mac, toont daarna de instellingen
 en leidt je met genummerde keuzes langs accesspoints en kamers.
 
 Extra opties:
-  ./wifi-kamermeting.sh [--scans 4] [--interval 2] [uitvoer.json]
-  ./wifi-kamermeting.sh --resume bestaand-bestand.json
-  ./wifi-kamermeting.sh --check
+  ./start.sh meten [--scans 4] [--interval 2] [uitvoer.json]
+  ./start.sh meten --resume bestaand-bestand.json
+  ./start.sh controle
 
   --scans N       1 t/m 12 scans per kamer
   --interval N    0 t/m 30 seconden pauze tussen scans
@@ -151,12 +154,12 @@ run_scan() {
   fi
   if [[ ! -s "$RAW" ]]; then
     error_with_help 'CoreWLAN gaf geen meetgegevens terug.' \
-      'Geef WifiKamermeting locatietoegang en voer ./wifi-kamermeting.sh --check uit.'
+      'Geef WifiKamermeting locatietoegang en voer ./start.sh controle uit.'
     return 1
   fi
   if ! python3 -m json.tool "$RAW" >/dev/null 2>&1; then
     error_with_help 'CoreWLAN gaf ongeldige gegevens terug.' \
-      'Voer ./wifi-kamermeting.sh --check uit en probeer daarna opnieuw.'
+      'Voer ./start.sh controle uit en probeer daarna opnieuw.'
     return 1
   fi
   elapsed=$(( $(date '+%s') - start_time ))
@@ -208,7 +211,7 @@ choose_existing_session() {
   fi
 
   shopt -s nullglob
-  local datasets=("$DIR"/wifi-meting-*.json)
+  local datasets=("$DATA_DIR"/wifi-meting-*.json)
   shopt -u nullglob
   [[ ${#datasets[@]} -gt 0 ]] || return 0
   latest=${datasets[${#datasets[@]}-1]}
@@ -226,14 +229,22 @@ choose_existing_session() {
     3)
       printf 'Pad naar het bestaande JSON-bestand: '
       IFS= read -r path || exit 1
-      [[ "$path" == /* ]] || path="$PWD/$path"
+      if [[ "$path" != /* ]]; then
+        if [[ -f "$DATA_DIR/$path" ]]; then path="$DATA_DIR/$path"; else path="$PWD/$path"; fi
+      fi
       RESUME_FILE=$path ;;
     *) echo 'Ongeldige keuze; er wordt een nieuwe meetronde gestart.' ;;
   esac
 }
 
 load_resume_session() {
-  [[ "$RESUME_FILE" == /* ]] || RESUME_FILE="$PWD/$RESUME_FILE"
+  if [[ "$RESUME_FILE" != /* ]]; then
+    if [[ -f "$DATA_DIR/$RESUME_FILE" ]]; then
+      RESUME_FILE="$DATA_DIR/$RESUME_FILE"
+    else
+      RESUME_FILE="$PWD/$RESUME_FILE"
+    fi
+  fi
   if [[ ! -f "$RESUME_FILE" ]]; then
     error_with_help "het meetbestand bestaat niet: $RESUME_FILE" \
       'Controleer het pad achter --resume.'
@@ -391,6 +402,8 @@ room_round() {
 printf '\nWi-Fi Kamermeting\n'
 printf 'Begeleide lokale meting · je meetgegevens verlaten deze Mac niet.\n'
 
+mkdir -p "$DATA_DIR" "$RUNTIME_DIR"
+
 step 1 'Mac en Wi-Fi controleren'
 if [[ "$(uname -s)" != 'Darwin' ]]; then
   error_with_help 'deze meting werkt alleen op macOS.' 'Start het programma op de Mac waarmee je wilt meten.'
@@ -476,7 +489,13 @@ if [[ "$RESUMING" -eq 1 ]]; then
 else
   choose_ssid "$ssid_from_shortcut"
   confirm_new_session
-  DATASET=${DATASET:-"$DIR/wifi-meting-$(date '+%Y%m%d-%H%M%S').json"}
+  if [[ -n "$DATASET" && "$DATASET" != /* ]]; then
+    case "$DATASET" in
+      */*) DATASET="$PWD/$DATASET" ;;
+      *) DATASET="$DATA_DIR/$DATASET" ;;
+    esac
+  fi
+  DATASET=${DATASET:-"$DATA_DIR/wifi-meting-$(date '+%Y%m%d-%H%M%S').json"}
   if [[ -e "$DATASET" ]]; then
     error_with_help "het uitvoerbestand bestaat al: $DATASET" \
       'Gebruik --resume om verder te gaan, of kies een andere bestandsnaam.'
@@ -513,6 +532,6 @@ finish_answer=${finish_answer:-1}
 if [[ "$finish_answer" == 1 ]]; then
   printf '\nHet dashboard wordt in je browser geopend.\n'
   printf 'Laat dit terminalvenster open; stop de dashboardserver later met Ctrl+C.\n\n'
-  exec "$DIR/start.sh" --open
+  exec "$ROOT/start.sh" dashboard
 fi
 printf '\nKlaar. Je meting staat in:\n%s\n' "$DATASET"

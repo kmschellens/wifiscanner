@@ -1,9 +1,11 @@
 # Wi-Fi-meetbestanden kunnen SSID's, BSSID's, kamernamen en notities bevatten.
 # Dit brede patroon is bewust: voeg alleen expliciet geschoonde voorbeelden toe
 # met een andere extensie, zoals *.json.voorbeeld.
+data/
 *.json
 
 # Lokaal gebouwde app en overige gegenereerde bestanden
+.runtime/
 WifiKamermeting.app/
 .build/
 *.dSYM/
