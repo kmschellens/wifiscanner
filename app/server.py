@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Lokaal dashboardserver voor Wi-Fi kamermetingen. Geen externe modules."""
+"""Lokale, alleen-lezen resultatenserver. Alleen Python-standaardbibliotheek."""
+import argparse
+import hashlib
 import http.server
 import json
-import os
 from pathlib import Path
 import sys
 import threading
@@ -10,73 +11,91 @@ import urllib.parse
 import webbrowser
 
 BASE = Path(__file__).resolve().parent
-DATA_DIR = BASE.parent / 'data'
+ROOT = BASE.parent
+DATA_DIR = ROOT / 'data'
+PROTOCOL = 2
+INSTANCE = hashlib.sha256(str(ROOT).encode()).hexdigest()[:20]
 
 
-class Handler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(BASE), **kwargs)
+class Handler(http.server.BaseHTTPRequestHandler):
+    def send_bytes(self, raw, content_type):
+        self.send_response(200)
+        self.send_header('Content-Type', content_type)
+        self.send_header('Content-Length', str(len(raw)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def send_json(self, value):
+        self.send_bytes(json.dumps(value, ensure_ascii=False).encode(), 'application/json; charset=utf-8')
 
     def do_GET(self):
-        request_path = urllib.parse.unquote(self.path.split('?', 1)[0])
-        if request_path == '/api/datasets':
-            names = sorted(
-                (p.name for p in DATA_DIR.iterdir() if p.is_file() and p.suffix.lower() == '.json'),
-                key=str.casefold,
+        path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
+        if path == '/api/health':
+            self.send_json({'app': 'wifi-kamermeting', 'protocol': PROTOCOL, 'instance': INSTANCE})
+        elif path in ('/api/datasets', '/api/catalog'):
+            files = sorted(
+                (p for p in DATA_DIR.glob('*.json') if p.is_file() and not p.is_symlink()),
+                key=lambda p: p.name.casefold(),
             )
-            raw = json.dumps(names, ensure_ascii=False).encode('utf-8')
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.send_header('Content-Length', str(len(raw)))
-            self.send_header('Cache-Control', 'no-store')
+            if path == '/api/datasets':
+                self.send_json([p.name for p in files])
+            else:
+                catalog = []
+                for file in files:
+                    try:
+                        stat = file.stat()
+                        catalog.append({'name': file.name, 'revision': f'{stat.st_mtime_ns}-{stat.st_size}'})
+                    except FileNotFoundError:
+                        continue
+                self.send_json(catalog)
+        elif path in ('/', '/index.html'):
+            self.send_bytes((BASE / 'index.html').read_bytes(), 'text/html; charset=utf-8')
+        elif path == '/favicon.ico':
+            self.send_response(204)
             self.end_headers()
-            self.wfile.write(raw)
-            return
-        if request_path.startswith('/') and request_path.count('/') == 1 and request_path.lower().endswith('.json'):
-            name = request_path[1:]
-            path = (DATA_DIR / name).resolve()
-            if path.parent != DATA_DIR.resolve() or not path.is_file():
+        elif path.count('/') == 1 and path.lower().endswith('.json'):
+            file = DATA_DIR / path[1:]
+            if file.is_symlink() or file.resolve().parent != DATA_DIR.resolve() or not file.is_file():
                 self.send_error(404, 'Meetbestand niet gevonden')
                 return
-            raw = path.read_bytes()
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.send_header('Content-Length', str(len(raw)))
-            self.send_header('Cache-Control', 'no-store')
-            self.end_headers()
-            self.wfile.write(raw)
-            return
-        super().do_GET()
+            try:
+                self.send_bytes(file.read_bytes(), 'application/json; charset=utf-8')
+            except FileNotFoundError:
+                self.send_error(404, 'Meetbestand niet gevonden')
+        else:
+            self.send_error(404, 'Pagina niet gevonden')
 
-    def end_headers(self):
-        if self.path.split('?', 1)[0].lower().endswith('.json'):
-            self.send_header('Cache-Control', 'no-store')
-        super().end_headers()
+    def log_message(self, *_args):
+        # De terminal blijft beschikbaar voor meten; geen netwerklog tussen de vragen.
+        pass
+
+
+def create_server(port=8765):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    return http.server.ThreadingHTTPServer(('127.0.0.1', port), Handler)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('port', nargs='?', type=int, default=8765)
+    parser.add_argument('--open', action='store_true')
+    args = parser.parse_args()
+    if args.port != 0 and not 1024 <= args.port <= 65535:
+        parser.error('Gebruik een poortnummer tussen 1024 en 65535.')
+    with create_server(args.port) as server:
+        url = f'http://127.0.0.1:{server.server_port}'
+        print(f'Resultaten: {url}', flush=True)
+        if args.open:
+            threading.Timer(0.25, webbrowser.open, args=(url,)).start()
+        server.serve_forever()
 
 
 if __name__ == '__main__':
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    arguments = sys.argv[1:]
-    open_browser = '--open' in arguments
-    arguments = [argument for argument in arguments if argument != '--open']
-    if len(arguments) > 1:
-        sys.exit('Gebruik: ./start.sh [poort] [--open]')
     try:
-        port = int(arguments[0]) if arguments else 8765
-    except ValueError:
-        sys.exit('Gebruik: ./start.sh [poort] [--open]')
-    if not (1024 <= port <= 65535):
-        sys.exit('Gebruik een poortnummer tussen 1024 en 65535.')
-    try:
-        with http.server.ThreadingHTTPServer(('127.0.0.1', port), Handler) as server:
-            url = f'http://127.0.0.1:{port}'
-            print(f'Wi-Fi dashboard: {url}', flush=True)
-            print(f'Map met JSON-bestanden: {DATA_DIR}', flush=True)
-            print('Stop met Ctrl+C. Er is geen internetverbinding nodig.', flush=True)
-            if open_browser:
-                threading.Timer(0.25, webbrowser.open, args=(url,)).start()
-            server.serve_forever()
-    except OSError as e:
-        sys.exit(f'Kan server niet starten: {e}. Probeer een andere poort, bv. ./start.sh dashboard 8766')
+        main()
+    except OSError as error:
+        sys.exit(f'Resultaten konden niet worden geopend: {error}')
     except KeyboardInterrupt:
-        print('\nServer gestopt.')
+        pass

@@ -1,5 +1,6 @@
 import json
 import io
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,6 +11,20 @@ from app import dataset
 
 
 class AccesspointNamingTests(unittest.TestCase):
+    def test_resume_picker_uses_recent_valid_sessions_and_returns_selected_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            older = Path(directory) / 'oud.json'
+            newer = Path(directory) / 'nieuw.json'
+            dataset.init_file(older, 'Testnet', 'en0', 4, 2)
+            dataset.init_file(newer, 'Testnet', 'en0', 4, 2)
+            (Path(directory) / 'ongeldig.json').write_text('[]', encoding='utf-8')
+            os.utime(older, (10, 10))
+            os.utime(newer, (20, 20))
+            with mock.patch('sys.stdin', io.StringIO('99\n1\n')), \
+                    mock.patch('sys.stderr', io.StringIO()), redirect_stdout(io.StringIO()) as output:
+                dataset.select_session(directory)
+            self.assertEqual(output.getvalue().strip(), str(newer.resolve()))
+
     def test_new_dataset_contains_empty_name_mapping(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'meting.json'

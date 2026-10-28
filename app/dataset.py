@@ -115,6 +115,13 @@ def dataset_field(path, name):
 
 def dataset_summary(path):
     data = load_dataset(path)
+    if os.environ.get('WIFI_APP_MANAGED') == '1':
+        measurements = [m for m in data['metingen'] if isinstance(m, dict)]
+        rooms = {str(m.get('kamer', '')).strip().casefold() for m in measurements}
+        print(f'\nMeetronde bewaard: {len(rooms)} kamer(s), {len(measurements)} meting(en).')
+        if any(m.get('waarschuwing') or m.get('ssid_komt_overeen') is False for m in measurements):
+            print('Bekijk de meetwaarschuwingen bij je resultaten.')
+        return
     observed = set()
     warnings = 0
     for measurement in data['metingen']:
@@ -138,6 +145,40 @@ def dataset_summary(path):
     print(f'  Benoemde accesspoints: {len(accesspoint_names(data))}')
     print(f'  Metingen met waarschuwing: {warnings}')
     print(f'  Bestand: {Path(path).resolve()}')
+
+
+def select_session(directory):
+    """Toon leesbare sessies; alleen de gekozen bestandsnaam gaat naar de shell."""
+    sessions = []
+    for path in Path(directory).glob('*.json'):
+        try:
+            data = load_dataset(path)
+            sessions.append((path.stat().st_mtime_ns, path, data))
+        except (OSError, ValueError):
+            continue
+    sessions.sort(key=lambda item: item[0], reverse=True)
+    if not sessions:
+        print('Er zijn nog geen hervatbare meetrondes.', file=sys.stderr)
+        return
+    print('\nMet welke meetronde wil je verder?\n', file=sys.stderr)
+    for index, (_, path, data) in enumerate(sessions, 1):
+        try:
+            started = datetime.datetime.fromisoformat(data['gestart_op_utc'].replace('Z', '+00:00'))
+            label = started.astimezone().strftime('%d-%m-%Y %H:%M')
+        except (KeyError, TypeError, ValueError):
+            label = path.stem
+        print(f'  [{index}] {label} · {data["verwacht_ssid"]} · {len(data["metingen"])} meting(en)', file=sys.stderr)
+    print('  [0] Terug', file=sys.stderr)
+    while True:
+        print('Keuze [1]: ', end='', file=sys.stderr, flush=True)
+        answer = sys.stdin.readline()
+        if not answer or answer.strip() == '0':
+            return
+        answer = answer.strip() or '1'
+        if answer.isdecimal() and 1 <= int(answer) <= len(sessions):
+            print(sessions[int(answer) - 1][1].resolve())
+            return
+        print('Kies een nummer uit de lijst.', file=sys.stderr)
 
 
 def scan_candidates(raw):
@@ -366,6 +407,15 @@ def add(path, rawpath, room, started, ended, ssid_start, ssid_end, bssid_start, 
     record = aggregate(data, raw, room, started, ended, ssid_start, ssid_end, bssid_start, bssid_end)
     data['metingen'].append(record)
     atomic_write(path, data)
+    if os.environ.get('WIFI_APP_MANAGED') == '1':
+        rssi = record['rssi_dbm']
+        signal = 'geen leesbare signaalwaarde' if rssi is None else (
+            'goed signaal' if rssi >= -65 else 'redelijk signaal' if rssi >= -75 else 'zwak signaal')
+        print(f'\nBewaard: {record["kamer"]} · {signal}.')
+        if record['waarschuwing']:
+            print(f'  Let op: {record["waarschuwing"]}')
+        print('Je resultaten in de browser worden automatisch bijgewerkt.\n')
+        return
     print(f'\nKamer {record["nummer"]}: {record["kamer"]}  ({record["scan_aantal"]} scans)')
     print(f'  Verbonden BSSID: {record["bssid"] or "onbekend"}, signaal: {record["rssi_dbm"] if record["rssi_dbm"] is not None else "?"} dBm')
     if not record['accesspoints']:
@@ -396,6 +446,8 @@ def main():
         dataset_field(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == 'summary' and len(sys.argv) == 3:
         dataset_summary(sys.argv[2])
+    elif sys.argv[1] == 'select-session' and len(sys.argv) == 3:
+        select_session(sys.argv[2])
     else:
         raise SystemExit('Ongeldige argumenten voor dataset.py')
 

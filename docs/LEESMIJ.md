@@ -18,7 +18,9 @@ chmod +x start.sh
 ./start.sh
 ```
 
-`start.sh` is het enige startpunt. Het hoofdmenu kan een meting starten of hervatten, het dashboard openen, de systeemcontrole uitvoeren en de lokale helper opnieuw bouwen. De begeleide meetflow voert je met genummerde keuzes door vier stappen: Mac controleren, meetronde instellen, accesspoints voorbereiden en kamers meten.
+`start.sh` is het enige startpunt. De app controleert zelf of de Wi-Fi-scanner gebouwd of bijgewerkt moet worden en start de lokale resultatenserver op de achtergrond. Daarna zie je drie keuzes: **Kamers meten**, **Resultaten bekijken** en **Meer opties**, plus Stoppen.
+
+**Meten doe je in Terminal. De browser is voor je resultaten.** De browser opent wanneer je Resultaten bekijken kiest. Laat het terminalvenster open zolang je de app gebruikt. Met Stoppen of Ctrl+C sluit de app de eigen server; de opgeslagen metingen blijven bewaard. Als een ander appvenster dezelfde server al gebruikt, wordt die hergebruikt. Een bezette poort wordt automatisch opgevangen.
 
 De projectindeling is bewust eenvoudig:
 
@@ -30,7 +32,7 @@ De projectindeling is bewust eenvoudig:
 - `examples/`: uitsluitend geschoonde voorbeelddata.
 - `tests/`: automatische tests.
 
-**Bij de eerste meting** bouwt de applicatie automatisch `.runtime/WifiKamermeting.app` uit de bronbestanden in `app/`. Xcode zelf is niet verplicht; de Command Line Tools volstaan. macOS kan vragen om Location Services: **Allow While Using App** voor **WifiKamermeting**. Geef die toestemming, want zonder deze toestemming kan CoreWLAN de BSSID van *andere* AP's verhullen, ook al werken de Shortcuts voor je verbonden AP.
+**Bij de eerste start, of na een wijziging van de scannerbron**, bouwt de applicatie automatisch `.runtime/WifiKamermeting.app` uit de bronbestanden in `app/`. Een actuele scanner wordt hergebruikt. Xcode zelf is niet verplicht; de Command Line Tools volstaan. Tijdens de eerste scan kan macOS vragen om Location Services: **Allow While Using App** voor **WifiKamermeting**. Geef die toestemming, want zonder deze toestemming kan CoreWLAN de BSSID van *andere* AP's verhullen, ook al werken de Shortcuts voor je verbonden AP. Als de scanner niet gebouwd kan worden, blijven opgeslagen resultaten beschikbaar; via Meer opties kun je de voorbereiding opnieuw proberen.
 
 Controleer bij problemen **System Settings → Privacy & Security → Location Services → WifiKamermeting**. Verwijder/verplaats de `.app` liever niet nadat je deze eenmaal autorisatie hebt gegeven. Wijzigen/recompileren kan ertoe leiden dat macOS opnieuw toestemming vraagt.
 
@@ -44,12 +46,13 @@ Bij problemen kun je apart `./start.sh controle` uitvoeren. Als deze controle zo
 ./start.sh
 ```
 
-De applicatie stelt het huidige SSID voor, toont alle instellingen voordat de meting begint en laat tijdens iedere scan de verstreken tijd zien. Na een kamer verschijnt steeds hetzelfde menu:
+Kies **Kamers meten**. De applicatie laat je een nieuwe ronde starten of een eerdere ronde hervatten, stelt het huidige SSID voor en toont de instellingen voordat de meting begint. Tijdens het meten zie je de verstreken tijd. Daarna zie je een korte bevestiging van het gemeten signaal en drie keuzes:
 
 1. Nieuwe kamer meten.
-2. Vorige kamer opnieuw meten.
-3. Accesspoint identificeren of benoemen.
-4. Meetronde afronden.
+2. Andere acties: vorige kamer opnieuw meten of accesspoints een naam geven.
+3. Meetronde afronden.
+
+Na afronden keer je terug in het hoofdmenu. Resultaten bekijken is dan de standaardkeuze. Je hoeft geen server te starten of bestanden te openen.
 
 Na iedere kamer schrijft het script het **complete JSON-bestand atomair** weg. Een afgebroken ronde kun je later via het startmenu hervatten, of expliciet met:
 
@@ -59,9 +62,9 @@ Na iedere kamer schrijft het script het **complete JSON-bestand atomair** weg. E
 
 ### Accesspoints een naam geven
 
-Na het kiezen van het SSID kun je eerst een **accesspoint-ronde** doen. Loop naar ieder fysiek accesspoint en start daar via het menu een korte identificatiescan. De gevonden BSSID's staan op signaalsterkte gesorteerd. Kies één nummer, of meerdere nummers als verschillende radio's/BSSID's bij hetzelfde fysieke apparaat horen, en geef ze samen een naam zoals `Overloop` of `AP kantoor`.
+Kies tijdens een meetronde **Andere acties → Accesspoints een naam geven**. Loop naar ieder fysiek accesspoint en start daar via het menu een korte identificatiescan. De gevonden BSSID's staan op signaalsterkte gesorteerd. Kies één nummer, of meerdere nummers als verschillende radio's/BSSID's bij hetzelfde fysieke apparaat horen, en geef ze samen een naam zoals `Overloop` of `AP kantoor`.
 
-De koppeling wordt in het meetbestand opgeslagen en verschijnt automatisch in de terminal en het dashboard. Ook tijdens de kamerronde kun je via keuze 3 nog een accesspoint benoemen of een bestaande naam wijzigen. Omdat één fysiek accesspoint meerdere 2,4/5/6GHz-radio's kan hebben, voegt het programma BSSID's niet op basis van een gok automatisch samen.
+De koppeling wordt in het meetbestand opgeslagen en verschijnt bij de uitgebreide analyse in de browser. Je kunt de naam op dezelfde manier wijzigen. Omdat één fysiek accesspoint meerdere 2,4/5/6GHz-radio's kan hebben, voegt het programma BSSID's niet op basis van een gok automatisch samen.
 
 De scans duren zelf ook enkele seconden. Standaard gebeurt er viermaal een scan, met twee seconden *pauze tussen* de scans. Wil je meer of minder:
 
@@ -103,15 +106,15 @@ Wanneer CoreWLAN op jouw macOS de BSSID van alternatieve AP's afschermt, worden 
 ./start.sh dashboard
 ```
 
-Aan het einde van een meetronde biedt de terminalapp deze keuze automatisch aan. Los starten kan met het commando hierboven; de browser opent dan vanzelf op **http://127.0.0.1:8765**. De server zoekt automatisch alle `.json`-meetbestanden in `data/`. Het dashboard heeft:
+Normaal kies je **Resultaten bekijken** in het hoofdmenu. Het commando hierboven opent de resultaten direct en laat de terminalapp beschikbaar om te meten. De server gebruikt normaal **http://127.0.0.1:8765** en kiest zo nodig zelf een vrije poort. De browser toont als eerste de laatst bijgewerkte meetronde en controleert elke drie seconden op opgeslagen wijzigingen.
 
-- Grafiek met **alle BSSID's per kamer**, ieder een eigen kleur.
-- Zelfgekozen accesspointnamen in legenda's, tabellen, grafieken en roamingsoverzichten.
-- **Signaalmatrix**: één rij per BSSID, één kolom per kamer, met gemiddelde/minimum/maximum RSSI.
-- Een sectie met **uitklapbare losse scans** per kamer.
-- De bestaande grafieken voor de *verbonden* AP, roamings en vergelijking van oudere JSON-bestanden blijven beschikbaar.
+- Het eerste overzicht toont één kaart per kamer: goed, redelijk, zwak of onbekend signaal. Bij herhalingen telt de laatste meting per kamer.
+- **Meetdetails** toont de exacte waarde, het tijdstip en eventuele waarschuwingen. Goed is vanaf −65 dBm, redelijk vanaf −75 dBm; dit zijn indicatieve signaalcategorieën, geen snelheidsmeting.
+- **Uitgebreide analyse** bevat de grafieken, accesspointnamen, signaalmatrix, roaming en ruwe scans.
+- Via **Meer opties** kun je meetrondes vergelijken of een meetbestand handmatig openen. Vergelijken is nooit het standaardoverzicht.
+- Als je bewust een oudere ronde bekijkt, blijft die geselecteerd wanneer nieuwe resultaten binnenkomen. Uitgeklapte meetdetails blijven open bij updates binnen dezelfde ronde.
 
-Voor direct gebruik van `app/index.html` zonder server kun je de JSON-bestanden met de knop **Open JSON-bestanden** selecteren. De lokale server gebruikt Python 3 zonder externe pakketten en luistert uitsluitend op 127.0.0.1.
+Voor direct gebruik van `app/index.html` zonder server kun je via **Meer opties → Meetbestand openen** een bestand kiezen. De lokale server gebruikt Python 3 zonder externe pakketten en luistert uitsluitend op 127.0.0.1. De browser kan geen scan starten; dat gebeurt uitsluitend in Terminal.
 
 ## 5. Privacy en beperkingen
 
@@ -119,4 +122,4 @@ De metingen verlaten jouw computer niet. De app gebruikt Location Services uitsl
 
 Meetbestanden kunnen SSID's, BSSID's, kamernamen, notities en tijdstippen bevatten. Daarom negeert `.gitignore` zowel `data/` als alle `*.json`-bestanden. Voeg een meetbestand nooit met `git add -f` toe. `examples/VOORBEELD.multiap.json.voorbeeld` bevat uitsluitend synthetische netwerkgegevens en kan wel veilig worden gedeeld.
 
-**Getest:** syntax van Bash, Swift-broncode parsing, JavaScript-syntax en Python JSON-bewerking en AP-aggregatie met gesimuleerde datasets in een Linux-testomgeving. **Niet live getest op macOS 15.5:** Apple CoreWLAN is niet beschikbaar in deze omgeving. Controleer dus eerst `./start.sh controle` op je Mac.
+Automatische tests: `python3 -B -m unittest discover -v` en, met Node.js geïnstalleerd, `node tests/test_dashboard.cjs`. De startflow, scannerbuild, resultatenserver en browserweergave zijn op macOS gecontroleerd. De berekeningen worden met fictieve datasets getest. Voor een echte scan en controle van de locatietoegang gebruik je **Meer opties → Wi-Fi en locatietoegang controleren**.

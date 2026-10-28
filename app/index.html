@@ -3,128 +3,177 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>Wi-Fi kamermetingen — dashboard</title>
+  <meta name="color-scheme" content="light dark">
+  <title>Wi-Fi · Resultaten</title>
   <style>
-    :root { --bg: #0a101c; --card: #121d2d; --card2: #162337; --edge: #2b3a50; --fg: #f1f5fb; --muted: #a6b5cb; --bright: #6ee7cf; --blue: #83b5ff; --good: #75dfa8; --warn: #ffd58a; --bad: #ff969c; --shadow: 0 14px 40px rgba(0,0,0,.15); }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: radial-gradient(ellipse 75% 28% at 85% -8%, #173753 0%, transparent 80%), var(--bg); color: var(--fg); font: 15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    button, select { font: inherit; }
-    button, .upload { cursor: pointer; }
-    button:focus-visible, select:focus-visible, .upload:focus-within { outline: 2px solid var(--bright); outline-offset: 3px; }
-    .container { max-width: 1320px; margin: auto; padding: 30px clamp(16px,3.2vw,44px) 56px; }
-    .top { display: flex; justify-content: space-between; gap: 20px; align-items: start; flex-wrap: wrap; padding-bottom: 24px; }
-    .brand { display: flex; align-items: center; gap: 15px; }
-    .logo { width: 53px; height: 53px; border: 1px solid #347e83; border-radius: 15px; display: grid; place-items: center; background: linear-gradient(135deg,#153846,#162641); flex: none; }
-    h1 { font-size: clamp(25px,3.2vw,34px); letter-spacing: -.9px; line-height: 1.15; margin: 0 0 5px; }
-    .sub { color: var(--muted); margin: 0; font-size: 14px; }
-    .actions { display: flex; gap: 9px; flex-wrap: wrap; padding-top: 7px; }
-    .btn, .upload { border: 1px solid #3b526a; background: #1a2b40; color: var(--fg); padding: 10px 15px; border-radius: 10px; font-weight: 600; transition: background .15s; display: inline-flex; gap: 8px; align-items: center; }
-    .btn:hover,.upload:hover { background: #253b54; }
-    .btn.primary { color: #051921; border-color: #7be7d0; background: var(--bright); }
-    .btn.primary:hover { background: #b1f3e3; }
-    .upload input { display: none; }
-    .status { padding: 12px 16px; border: 1px solid var(--edge); border-radius: 12px; background: #102031; color: var(--muted); margin: 0 0 20px; }
-    .status:empty { display: none; }
-    .status.warning { border-color: #886645; color: #f4d7ab; }
-    .status.error { border-color: #a75157; color: #ffc0bd; }
-    .picker { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 21px; }
-    .picker label { color: var(--muted); font-weight: 600; }
-    select { min-width: min(100%,370px); max-width: 100%; border: 1px solid #3b526a; border-radius: 10px; padding: 11px 14px; color: var(--fg); background: #1a2b40; }
-    .meta { color: var(--muted); margin: -7px 0 22px; font-size: 13px; overflow-wrap: anywhere; }
-    .stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
-    .stat { border: 1px solid var(--edge); background: linear-gradient(120deg,#162436,var(--card)); padding: 18px; border-radius: 14px; min-width: 0; box-shadow: var(--shadow); }
-    .stat-label { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 9px; }
-    .stat-value { font-weight: 750; font-size: clamp(24px,2.6vw,33px); line-height: 1.12; letter-spacing: -.7px; font-variant-numeric: tabular-nums; }
-    .stat-extra { color: var(--muted); font-size: 12px; margin-top: 7px; }
-    .units { font-size: 14px; font-weight: 500; color: var(--muted); }
-    .panel { border: 1px solid var(--edge); border-radius: 15px; background: var(--card); padding: 22px; min-width: 0; box-shadow: var(--shadow); }
-    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(255px,1fr); gap: 18px; margin-bottom: 18px; }
-    h2 { margin: 0; font-size: 19px; letter-spacing: -.3px; }
-    .heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; margin-bottom: 13px; }
-    .hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
-    .graph-scroll { overflow-x: auto; padding-bottom: 2px; }
-    .graph-scroll svg { display: block; max-width: none; }
-    .legend { display: flex; flex-wrap: wrap; gap: 9px 17px; margin-top: 14px; }
-    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); max-width: 100%; overflow-wrap: anywhere; }
-    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
-    .ap-list { display: flex; flex-direction: column; gap: 11px; }
-    .ap-entry { display: flex; gap: 11px; border-bottom: 1px solid #253448; padding-bottom: 11px; }
-    .ap-entry:last-child { border: 0; }
-    .ap-name { font-weight: 750; }
-    .mono { font: 12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow-wrap: anywhere; }
-    .minor { color: var(--muted); font-size: 12px; }
-    .section { margin: 18px 0; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-    th { text-transform: uppercase; letter-spacing: .05em; font-size: 11px; color: var(--muted); font-weight: 700; padding: 13px 11px; border-bottom: 1px solid #3b4c61; white-space: nowrap; }
-    td { padding: 14px 11px; border-bottom: 1px solid #283648; vertical-align: top; }
-    tr:last-child td { border-bottom: 0; }
-    tr:hover td { background: #19293c; }
-    .room { font-weight: 650; min-width: 130px; }
-    .pill { display: inline-flex; gap: 5px; align-items: center; padding: 3px 8px; border: 1px solid #46536a; border-radius: 6px; font-size: 11px; font-weight: 680; white-space: nowrap; }
-    .pill.yes { background: #3b2b23; color: var(--warn); border-color: #765b36; }
-    .pill.no { background: #20342f; color: var(--good); border-color: #375e53; }
-    .pill.unknown { color: var(--muted); background: #1f2c3c; }
-    .strength { font-weight: 730; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .strength.good { color: var(--good); }
-    .strength.mid { color: var(--warn); }
-    .strength.weak { color: var(--bad); }
-    .timeline { display: flex; overflow-x: auto; gap: 10px; padding: 3px 0 8px; }
-    .stop { flex: 0 0 158px; border: 1px solid #3a4a60; border-radius: 11px; padding: 12px; background: #19273a; position: relative; }
-    .stop.switched { border-color: #c18d51; background: #29293a; }
-    .stop-count { font-size: 11px; color: var(--muted); }
-    .stop-name { font-weight: 690; height: 42px; overflow: hidden; overflow-wrap: anywhere; line-height: 1.35; margin: 6px 0 10px; }
-    .stop-db { font-weight: 780; font-size: 22px; font-variant-numeric: tabular-nums; }
-    .stop-id { margin-top: 5px; font-size: 11px; }
-    .notes { margin: 12px 0 0; color: var(--muted); overflow-wrap: anywhere; }
-    .empty { border: 1px dashed #3e5570; border-radius: 16px; padding: 65px 24px; text-align: center; background: #101c2b; }
-    .empty h2 { font-size: 23px; margin-bottom: 12px; }
-    .empty p { max-width: 570px; margin: 0 auto 18px; color: var(--muted); }
-    code { font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color: #9cebdc; }
-    .footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
-    .warnrow { background: rgba(205,121,63,.055); }
-    .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
-    .compare-cell { min-width: 140px; }
-    .compare-file { max-width: 175px; white-space: normal; overflow-wrap: anywhere; }
-    #app[hidden], #empty[hidden] { display:none !important; }
-    body.dragging::before { content: 'Laat de JSON-bestanden hier los'; position: fixed; z-index: 50; inset: 14px; border: 3px dashed var(--bright); display: grid; place-items: center; color: var(--bright); font-size: 26px; font-weight: bold; background: rgba(10,16,28,.94); border-radius: 18px; pointer-events: none; }
-    @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-    @media (max-width: 500px) { .stats { gap: 9px; } .stat { padding: 14px 12px; } .container { padding-top: 19px; } .top { gap: 12px; } .panel { padding: 17px 13px; } }
+    :root { color-scheme:light dark; --bg:#f5f5f7; --card:#fff; --card2:#f5f5f7; --edge:#e5e5ea; --fg:#1d1d1f; --muted:#6e6e73; --bright:#0071e3; --blue:#0066cc; --good:#217647; --warn:#966000; --bad:#bc3d31; --shadow:0 2px 12px #00000004; --grid:#dedee5; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+    button,select,input { font:inherit; }
+    button,.upload,summary { cursor:pointer; }
+    button:focus-visible,select:focus-visible,summary:focus-visible,.upload:focus-within,a:focus-visible { outline:3px solid var(--bright); outline-offset:4px; }
+    .container { max-width:1080px; margin:auto; padding:40px 28px 56px; }
+    .top { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:32px; }
+    .brand { display:flex; align-items:center; gap:13px; }
+    .logo { width:46px; height:46px; display:grid; place-items:center; border-radius:13px; background:var(--bright); flex:none; }
+    h1 { margin:0; font-size:28px; letter-spacing:-.8px; line-height:1.2; }
+    h2 { margin:0; font-size:21px; letter-spacing:-.45px; line-height:1.3; }
+    h3 { margin:0; font-size:17px; letter-spacing:-.25px; }
+    p { margin:8px 0; }
+    .eyebrow { margin:0 0 3px; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:.03em; }
+    .sub,.minor,.hint,.meta,.footer,.stat-label,.stat-extra { color:var(--muted); }
+    .sub { margin:5px 0 0; font-size:14px; }
+    .minor,.hint { font-size:12px; }
+    .hint { margin:5px 0 0; }
+    .connection { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); }
+    .connection::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--good); }
+    .connection.offline::before { background:var(--warn); }
+    .role-note { display:flex; align-items:start; gap:12px; padding:18px 20px; margin-bottom:26px; background:var(--card); border:1px solid var(--edge); border-radius:16px; }
+    .role-icon { font-family:ui-monospace,monospace; font-size:16px; color:var(--muted); padding-top:1px; }
+    .role-note p { margin:3px 0 0; font-size:13px; color:var(--muted); }
+    .toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
+    .picker { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+    .picker label { color:var(--muted); font-size:13px; }
+    select { max-width:100%; min-width:210px; padding:9px 34px 9px 12px; border:1px solid var(--edge); border-radius:10px; background:var(--card); color:var(--fg); }
+    .actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .btn,.upload { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:9px 14px; border:1px solid var(--edge); border-radius:9px; background:var(--card); color:var(--fg); font-size:13px; font-weight:500; text-decoration:none; }
+    .btn:hover,.upload:hover { background:var(--card2); }
+    .btn.primary { background:var(--bright); border-color:var(--bright); color:white; }
+    .upload input { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
+    .tools { position:relative; }
+    .tools > summary { list-style:none; color:var(--blue); padding:9px 4px; font-size:13px; }
+    .tools > summary::-webkit-details-marker { display:none; }
+    .tools[open] .tool-menu { position:absolute; right:0; top:42px; z-index:5; background:var(--card); box-shadow:0 8px 32px #0002; border:1px solid var(--edge); padding:10px; border-radius:14px; min-width:215px; display:grid; gap:7px; }
+    .tool-menu .btn,.tool-menu .upload { width:100%; }
+    .meta { font-size:12px; margin:8px 0 28px; overflow-wrap:anywhere; }
+    .status { padding:14px 18px; border-radius:12px; background:var(--card); border:1px solid var(--edge); color:var(--muted); margin:12px 0 22px; font-size:13px; overflow-wrap:anywhere; }
+    .status:empty { display:none; }
+    .status.warning { color:var(--warn); border-color:var(--warn); }
+    .status.error { color:var(--bad); border-color:var(--bad); }
+    .overview-header { margin:26px 0 20px; }
+    .overview-header h2 { font-size:30px; letter-spacing:-.8px; }
+    .overview-header p { color:var(--muted); max-width:650px; }
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:26px; }
+    .stats.overview-stats { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .stat { background:var(--card); border:1px solid var(--edge); padding:20px; border-radius:16px; min-width:0; }
+    .stat-label { font-size:12px; margin-bottom:8px; }
+    .stat-value { font-size:29px; line-height:1.2; font-weight:650; letter-spacing:-.7px; font-variant-numeric:tabular-nums; }
+    .stat-extra { margin-top:5px; font-size:12px; }
+    .units { font-size:14px; font-weight:400; color:var(--muted); }
+    .room-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .room-card { border:1px solid var(--edge); border-radius:17px; background:var(--card); padding:22px; min-width:0; }
+    .room-card .room-title { display:flex; align-items:start; justify-content:space-between; gap:12px; }
+    .signal-label { display:flex; align-items:center; gap:7px; font-size:13px; white-space:nowrap; }
+    .signal-label::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; }
+    .signal-label.good,.strength.good { color:var(--good); }
+    .signal-label.mid,.strength.mid { color:var(--warn); }
+    .signal-label.weak,.strength.weak { color:var(--bad); }
+    .signal-label.unknown { color:var(--muted); }
+    .room-card p { color:var(--muted); font-size:13px; margin:12px 0 0; }
+    .room-card details { margin-top:17px; border-top:1px solid var(--edge); padding-top:13px; font-size:13px; }
+    .room-card summary { color:var(--blue); font-size:12px; }
+    .room-card dl { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:13px 0 0; font-size:12px; }
+    .room-card dt { color:var(--muted); }
+    .room-card dd { margin:0; text-align:right; overflow-wrap:anywhere; min-width:0; }
+    .room-warning { color:var(--warn) !important; }
+    .disclosure { background:var(--card); border:1px solid var(--edge); border-radius:16px; margin-top:28px; }
+    .disclosure > summary { padding:19px 22px; font-weight:600; }
+    .disclosure > summary span { font-weight:400; color:var(--muted); margin-left:8px; font-size:12px; }
+    .disclosure-content { padding:0 18px 18px; }
+    .panel { border:1px solid var(--edge); border-radius:14px; background:var(--card); padding:20px; min-width:0; }
+    .layout { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(230px,1fr); gap:15px; margin-bottom:15px; }
+    .heading { display:flex; justify-content:space-between; align-items:start; gap:12px; flex-wrap:wrap; margin-bottom:15px; }
+    .section { margin:18px 0; }
+    .graph-scroll,.table-wrap { overflow-x:auto; }
+    .graph-scroll svg { display:block; max-width:none; }
+    .legend { display:flex; flex-wrap:wrap; gap:9px 17px; margin-top:14px; }
+    .legend-item { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); max-width:100%; overflow-wrap:anywhere; }
+    .dot { display:inline-block; width:9px; height:9px; border-radius:50%; flex:none; }
+    .ap-list { display:flex; flex-direction:column; gap:11px; }
+    .ap-entry { display:flex; gap:11px; border-bottom:1px solid var(--edge); padding-bottom:11px; }
+    .ap-entry:last-child { border:0; }
+    .ap-name { font-weight:600; }
+    .mono,code { font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow-wrap:anywhere; }
+    .notes { margin:12px 0 0; color:var(--muted); overflow-wrap:anywhere; }
+    table { width:100%; border-collapse:collapse; font-size:12px; text-align:left; }
+    th { font-size:11px; color:var(--muted); font-weight:600; padding:12px 10px; border-bottom:1px solid var(--edge); white-space:nowrap; }
+    td { padding:12px 10px; border-bottom:1px solid var(--edge); vertical-align:top; }
+    tr:last-child td { border-bottom:0; }
+    .room { font-weight:600; min-width:120px; }
+    .pill { display:inline-flex; gap:5px; align-items:center; padding:3px 7px; border:1px solid var(--edge); border-radius:6px; font-size:11px; white-space:nowrap; }
+    .pill.yes { color:var(--warn); }
+    .pill.no { color:var(--good); }
+    .pill.unknown { color:var(--muted); }
+    .strength { font-weight:600; white-space:nowrap; }
+    .timeline { display:flex; overflow-x:auto; gap:10px; padding:3px 0 8px; }
+    .stop { flex:0 0 158px; border:1px solid var(--edge); border-radius:11px; padding:12px; background:var(--card2); }
+    .stop.switched { border-color:var(--warn); }
+    .stop-count { font-size:11px; color:var(--muted); }
+    .stop-name { font-weight:600; min-height:42px; overflow-wrap:anywhere; margin:6px 0 10px; }
+    .stop-db { font-size:22px; }
+    .stop-id { margin-top:5px; font-size:11px; }
+    .empty { padding:64px 28px; border:1px solid var(--edge); border-radius:20px; background:var(--card); text-align:center; }
+    .empty-icon { font-size:30px; margin-bottom:14px; color:var(--muted); }
+    .empty h2 { font-size:25px; margin-bottom:10px; }
+    .empty p { max-width:480px; margin:0 auto 14px; color:var(--muted); }
+    .empty .next-step { display:inline-block; background:var(--card2); border-radius:10px; padding:11px 16px; font-size:13px; }
+    .footer { margin-top:32px; font-size:12px; }
+    .footer p { margin:5px 0; }
+    .warnrow { background:color-mix(in srgb,var(--warn) 5%,transparent); }
+    .compare-cell { min-width:140px; }
+    .compare-file { max-width:180px; white-space:normal; overflow-wrap:anywhere; }
+    body.dragging::before { content:'Laat de meetbestanden hier los'; position:fixed; z-index:50; inset:14px; border:2px dashed var(--bright); display:grid; place-items:center; color:var(--bright); font-size:24px; background:var(--bg); border-radius:18px; pointer-events:none; }
+    @media (prefers-color-scheme:dark) { :root { --bg:#151517; --card:#222225; --card2:#2c2c30; --edge:#37373c; --fg:#f5f5f7; --muted:#a1a1a6; --bright:#0a84ff; --blue:#70b7ff; --good:#6bd393; --warn:#efbe61; --bad:#ff9188; --grid:#414147; } }
+    @media (max-width:800px) { .layout { grid-template-columns:1fr; } .room-grid { grid-template-columns:1fr; } .disclosure > summary span { display:block; margin:3px 0 0; } }
+    @media (max-width:540px) { .container { padding:24px 16px 40px; } .top { align-items:start; flex-direction:column; gap:14px; margin-bottom:22px; } .stats { gap:8px; } .stat { padding:14px 10px; } .stat-label { font-size:11px; } .stat-value { font-size:25px; } .stat-extra { display:none; } .room-card { padding:18px; } .room-title { flex-wrap:wrap; } select { min-width:0; width:100%; } .picker { width:100%; } .tools[open] .tool-menu { left:0; right:auto; } .panel { padding:16px 12px; } }
   </style>
 </head>
 <body>
   <div class="container">
     <header class="top">
       <div class="brand">
-        <div class="logo" aria-hidden="true"><svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="#7ef1d6" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.7 15.3a5 5 0 0 1 6.6 0"/><circle cx="12" cy="19.5" r="1.2" fill="#7ef1d6" stroke="none"/></svg></div>
-        <div><h1>Wi-Fi kamermetingen</h1><p class="sub">Signaalsterkte &middot; accesspoints &middot; roaming</p></div>
+        <div class="logo" aria-hidden="true"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.7 15.3a5 5 0 0 1 6.6 0"/><circle cx="12" cy="19.5" r="1.2" fill="white" stroke="none"/></svg></div>
+        <div><p class="eyebrow">WI-FI KAMERMETING</p><h1>Resultaten</h1></div>
       </div>
-      <div class="actions">
-        <button class="btn" id="refresh" type="button">↻ Vernieuwen</button>
-        <label class="upload">+ Open JSON-bestanden<input id="files" type="file" accept=".json,application/json" multiple></label>
-      </div>
+      <div id="connection" class="connection" role="status">Verbinding maken…</div>
     </header>
-
-    <div class="status" id="status" role="status"></div>
-    <div class="picker" id="picker" hidden><label for="dataset">Bestand / overzicht</label><select id="dataset" aria-label="Selecteer meting"></select></div>
+    <aside class="role-note">
+      <span class="role-icon" aria-hidden="true">&gt;_</span>
+      <div><strong>Meten in Terminal. Resultaten hier.</strong><p>Loop met je Mac naar elke kamer en start de meting in het terminalvenster. Deze pagina werkt vanzelf bij.</p></div>
+    </aside>
+    <div class="toolbar">
+      <div class="picker" id="picker" hidden><label for="dataset">Meetronde</label><select id="dataset" aria-label="Kies een meetronde"></select></div>
+      <details class="tools" id="tools">
+        <summary>Meer opties ···</summary>
+        <div class="tool-menu">
+          <button class="btn" id="compare" type="button" hidden>Meetrondes vergelijken</button>
+          <label class="upload">Meetbestand openen<input id="files" type="file" accept=".json,application/json" multiple></label>
+          <button class="btn" id="refresh" type="button">Opnieuw laden</button>
+        </div>
+      </details>
+    </div>
     <div class="meta" id="meta"></div>
+    <div class="status" id="status" role="status"></div>
     <main id="app" hidden></main>
     <section id="empty" class="empty">
-      <h2>Je metingen verschijnen hier</h2>
-      <p>Start vanuit de projectmap <code>./start.sh dashboard</code>. Meetbestanden uit <code>data/</code> worden dan automatisch geladen. Je kunt hierboven ook handmatig JSON-bestanden openen.</p>
-      <label class="upload">Selecteer JSON-bestanden<input id="files-empty" type="file" accept=".json,application/json" multiple></label>
+      <div class="empty-icon" aria-hidden="true">⌁</div>
+      <h2>Klaar voor je eerste kamer</h2>
+      <p>Na je eerste meting zie je hier hoe het Wi-Fi-signaal in die kamer is. Je hoeft deze pagina niet te vernieuwen.</p>
+      <p class="next-step">Ga in Terminal naar <strong>Kamers meten</strong>.</p>
     </section>
-    <footer class="footer">Alle metingen blijven lokaal op je Mac. Scan-RSSI is een afzonderlijke meting van link-RSSI. RSSI is negatief: −50 dBm is sterker dan −80 dBm. Een BSSID-wissel wordt alleen tussen twee meetmomenten gedetecteerd; niet op het exacte moment van roaming.</footer>
+    <footer class="footer"><p>Alleen op je Mac · Geen account · Geen clouddienst</p><p>Dit overzicht toont Wi-Fi-signaalsterkte. Snelheid en internetkwaliteit worden niet gemeten.</p></footer>
   </div>
 <script>
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const palette = ['#68e4cb', '#83b5ff', '#ffbf76', '#d7a2ff', '#ff869b', '#d3e47c', '#78c6e9', '#f6a7ce', '#b2b9ff'];
+  const palette = ['#358872', '#397fd0', '#b17c32', '#9670ca', '#c46276', '#7c8b29', '#278797', '#b0678b', '#737fbd'];
   const datasets = new Map();
-  let selected = '';
-  let hasServer = false;
+  let selected = new URLSearchParams(location.search).get('meting') || '';
+  let catalogBusy = false;
+  let renderSignature = '';
+  let renderedSelection = '';
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const val = v => v === null || v === undefined || v === '' ? '—' : String(v);
   const num = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
@@ -150,13 +199,13 @@
     const keys = uniq(data.flatMap(d => readings(d).flatMap(m => [apKey(m.bssid), ...(Array.isArray(m.accesspoints) ? m.accesspoints.map(ap => apKey(ap.bssid)) : [])])));
     return new Map(keys.map((b,i) => [b, {label:configured.get(b) || `AP ${i+1}`, color:palette[i%palette.length]}]));
   };
-  const apColor = (map,b) => map.get(apKey(b))?.color || '#8593a9';
+  const apColor = (map,b) => map.get(apKey(b))?.color || 'var(--muted)';
   const apLabel = (map,b) => map.get(apKey(b))?.label || 'AP onbekend';
   const switchType = (m,i,ms) => { if (i === 0) return null; if (m.accesspoint_gewisseld === true || m.accesspoint_gewisseld === false) return m.accesspoint_gewisseld; const p = apKey(ms[i-1]?.bssid), c = apKey(m.bssid); return p && c ? p !== c : null; };
   const switchPill = s => s === true ? '<span class="pill yes">↪ Gewisseld</span>' : s === false ? '<span class="pill no">Zelfde AP</span>' : '<span class="pill unknown">Onbekend</span>';
   const stat = (label,value,extra) => `<div class="stat"><div class="stat-label">${esc(label)}</div><div class="stat-value">${value}</div><div class="stat-extra">${esc(extra)}</div></div>`;
   const apPill = (map,b) => `<span class="pill" style="border-color:${apColor(map,b)};color:${apColor(map,b)}">${esc(apLabel(map,b))}</span>`;
-  const legend = (map) => `<div class="legend">${[...map.entries()].map(([b,a])=>`<div class="legend-item"><span class="dot" style="background:${a.color}"></span><b style="color:#f1f5fb">${esc(a.label)}</b><span class="mono">${esc(b)}</span></div>`).join('') || '<span class="minor">Geen BSSID beschikbaar</span>'}</div>`;
+  const legend = (map) => `<div class="legend">${[...map.entries()].map(([b,a])=>`<div class="legend-item"><span class="dot" style="background:${a.color}"></span><b style="color:var(--fg)">${esc(a.label)}</b><span class="mono">${esc(b)}</span></div>`).join('') || '<span class="minor">Geen BSSID beschikbaar</span>'}</div>`;
   const warn = ms => ms.filter(m => m.ssid_komt_overeen === false || m.waarschuwing);
 
   function graph(ms, map) {
@@ -169,7 +218,7 @@
     let svg = '';
     for(const tick of [-40,-50,-60,-70,-80,-90,-100]){
       const yy = y(tick);
-      svg += `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" stroke="#34455d" stroke-dasharray="3 6"/><text x="${left-9}" y="${yy+4}" text-anchor="end" font-size="11" fill="#a6b5cb">${tick}</text>`;
+      svg += `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" stroke="var(--grid)" stroke-dasharray="3 6"/><text x="${left-9}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${tick}</text>`;
     }
     let prev = null;
     ms.forEach((m,i)=>{
@@ -183,13 +232,13 @@
       const xx=x(i), rr=num(m.rssi_dbm), change=switchType(m,i,ms);
       if(change === true) svg+=`<line x1="${xx}" y1="${top-3}" x2="${xx}" y2="${height-bottom}" stroke="#f5bd73" stroke-width="1.3" stroke-dasharray="5 5" opacity=".85"/>`;
       if(rr!==null && rr <= -40 && rr >= -100){
-        svg+=`<circle cx="${xx}" cy="${y(rr)}" r="${change===true?7:5.5}" fill="${apColor(map,m.bssid)}" stroke="#101b2a" stroke-width="2"><title>${esc(m.kamer)}: ${rr} dBm; ${esc(val(m.bssid))}</title></circle>`;
-        svg+=`<text x="${xx}" y="${y(rr)-14}" text-anchor="middle" font-size="11" font-weight="700" fill="#e1e9f4">${rr}</text>`;
+        svg+=`<circle cx="${xx}" cy="${y(rr)}" r="${change===true?7:5.5}" fill="${apColor(map,m.bssid)}" stroke="var(--fg)" stroke-width="2"><title>${esc(m.kamer)}: ${rr} dBm; ${esc(val(m.bssid))}</title></circle>`;
+        svg+=`<text x="${xx}" y="${y(rr)-14}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--fg)">${rr}</text>`;
       }
-      svg+=`<text x="${xx}" y="${height-bottom+21}" text-anchor="middle" font-size="11" fill="#e0eaf4">${i+1}</text>`;
-      svg+=`<text x="${xx}" y="${height-bottom+39}" text-anchor="middle" font-size="11" fill="#a6b5cb">${esc(compact(m.kamer,11))}</text>`;
+      svg+=`<text x="${xx}" y="${height-bottom+21}" text-anchor="middle" font-size="11" fill="var(--fg)">${i+1}</text>`;
+      svg+=`<text x="${xx}" y="${height-bottom+39}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(compact(m.kamer,11))}</text>`;
     });
-    svg+=`<text x="${width/2}" y="${height-6}" fill="#a6b5cb" text-anchor="middle" font-size="11">Kamers in meetvolgorde</text>`;
+    svg+=`<text x="${width/2}" y="${height-6}" fill="var(--muted)" text-anchor="middle" font-size="11">Kamers in meetvolgorde</text>`;
     return `<div class="graph-scroll"><svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Grafiek met RSSI per kamermeting, gekleurd naar accesspoint">${svg}</svg></div>`;
   }
 
@@ -202,9 +251,9 @@
     const x=i=>ms.length===1?L+W/2:L+W*i/(ms.length-1);
     const y=v=>T+(-30-Math.max(-100,Math.min(-30,v)))/70*H;
     let svg='';
-    for(let v=-30;v>=-100;v-=10) svg+=`<line x1="${L}" y1="${y(v)}" x2="${width-R}" y2="${y(v)}" stroke="#34455d" stroke-dasharray="3 6"/><text x="${L-9}" y="${y(v)+4}" text-anchor="end" fill="#a6b5cb" font-size="11">${v}</text>`;
+    for(let v=-30;v>=-100;v-=10) svg+=`<line x1="${L}" y1="${y(v)}" x2="${width-R}" y2="${y(v)}" stroke="var(--grid)" stroke-dasharray="3 6"/><text x="${L-9}" y="${y(v)+4}" text-anchor="end" fill="var(--muted)" font-size="11">${v}</text>`;
     for(let i=0;i<ms.length;i++) {
-      svg+=`<text x="${x(i)}" y="${height-B+19}" text-anchor="middle" font-size="11" fill="#e0eaf4">${i+1}</text><text x="${x(i)}" y="${height-B+36}" text-anchor="middle" font-size="11" fill="#a6b5cb">${esc(compact(ms[i].kamer,15))}</text>`;
+      svg+=`<text x="${x(i)}" y="${height-B+19}" text-anchor="middle" font-size="11" fill="var(--fg)">${i+1}</text><text x="${x(i)}" y="${height-B+36}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(compact(ms[i].kamer,15))}</text>`;
     }
     for(const b of aps) {
       const c=apColor(map,b);
@@ -216,7 +265,7 @@
         const xx=x(i), yy=y(v);
         if(prev) svg+=`<line x1="${prev[0]}" y1="${prev[1]}" x2="${xx}" y2="${yy}" stroke="${c}" stroke-width="2.5" opacity=".8"/>`;
         const connected=apKey(m.bssid)===b;
-        svg+=`<circle cx="${xx}" cy="${yy}" r="${connected?7:5}" fill="${c}" stroke="${connected?'#ffffff':'#101b2a'}" stroke-width="${connected?2.5:1.5}"><title>${esc(m.kamer)} · ${esc(apLabel(map,b))} · ${esc(b)} · gem. ${v} dBm · ${ap.aantal_scans_gezien} scans${connected?' · VERBONDEN':''}</title></circle>`;
+        svg+=`<circle cx="${xx}" cy="${yy}" r="${connected?7:5}" fill="${c}" stroke="${connected?'#ffffff':'var(--fg)'}" stroke-width="${connected?2.5:1.5}"><title>${esc(m.kamer)} · ${esc(apLabel(map,b))} · ${esc(b)} · gem. ${v} dBm · ${ap.aantal_scans_gezien} scans${connected?' · VERBONDEN':''}</title></circle>`;
         prev=[xx,yy];
       });
     }
@@ -242,7 +291,7 @@
     html+=`<section class="panel section"><div class="heading"><div><h2>Scanresultaten per kamer</h2><p class="hint">Uitklapbare ruwe waarnemingen, ook van wisselingen tijdens een kamerbezoek.</p></div></div>`;
     for(const m of ms){
       const scans=Array.isArray(m.scan_details)?m.scan_details:[];
-      html+=`<details style="margin-bottom:12px;border:1px solid #304157;border-radius:10px;padding:10px 14px"><summary style="cursor:pointer;font-weight:600">${esc(m.kamer)} · ${scans.length} scan(s), ${Array.isArray(m.accesspoints)?m.accesspoints.length:0} BSSID’s</summary><div class="table-wrap"><table><thead><tr><th>Scan</th><th>Tijd</th><th>AP</th><th>RSSI</th><th>Kanaal</th></tr></thead><tbody>`;
+      html+=`<details style="margin-bottom:12px;border:1px solid var(--grid);border-radius:10px;padding:10px 14px"><summary style="cursor:pointer;font-weight:600">${esc(m.kamer)} · ${scans.length} scan(s), ${Array.isArray(m.accesspoints)?m.accesspoints.length:0} BSSID’s</summary><div class="table-wrap"><table><thead><tr><th>Scan</th><th>Tijd</th><th>AP</th><th>RSSI</th><th>Kanaal</th></tr></thead><tbody>`;
       for(const scan of scans){const sas=Array.isArray(scan.aps)?scan.aps:[];
         if(!sas.length)html+=`<tr><td>${esc(scan.nummer)}</td><td>${esc(datefmt(scan.tijdstip_utc))}</td><td colspan="3" class="minor">Geen BSSID’s gedetecteerd</td></tr>`;
         for(const ap of sas)html+=`<tr><td>${esc(scan.nummer)}</td><td>${esc(datefmt(scan.tijdstip_utc))}</td><td>${apPill(map,ap.bssid)}<div class="mono minor">${esc(ap.bssid)}</div></td><td>${esc(fmtDb(ap.rssi_dbm))}</td><td>${esc(val(ap.kanaal))}</td></tr>`;
@@ -252,13 +301,49 @@
     return html+'</section>';
   }
 
+  const latestRooms = ms => {
+    const rooms = new Map();
+    for (const m of ms) rooms.set(roomKey(m.kamer) || `meting-${m.nummer ?? rooms.size}`, m);
+    return [...rooms.values()];
+  };
+  function roundLabel(name, data) {
+    const date = datefmt(data?.gestart_op_utc);
+    return `${date === '—' ? name : date} · ${data?.verwacht_ssid || 'Meetronde'}`;
+  }
   function single(file,d) {
+    const ms = readings(d), rooms = latestRooms(ms);
+    const good = rooms.filter(m => num(m.rssi_dbm) !== null && m.rssi_dbm >= -65).length;
+    const attention = rooms.filter(m => num(m.rssi_dbm) === null || m.rssi_dbm < -65 || m.waarschuwing || m.ssid_komt_overeen === false).length;
+    const ssid = d.verwacht_ssid || 'Je netwerk';
+    $('meta').textContent = `Netwerk: ${ssid} · ${datefmt(d.gestart_op_utc)}`;
+    let heading = !rooms.length ? 'Je meetronde staat klaar' : attention ? 'Je kamers in één oogopslag' : 'Goed signaal in je gemeten kamers';
+    let intro = !rooms.length ? 'Meet je eerste kamer in Terminal. Het resultaat verschijnt hier vanzelf.' : `${rooms.length} ${rooms.length === 1 ? 'kamer gemeten' : 'kamers gemeten'}. Je ziet steeds de laatste meting per kamer.`;
+    let html = `<section class="overview-header"><h2>${esc(heading)}</h2><p>${esc(intro)}</p></section>`;
+    if (!rooms.length) {
+      html += '<section class="empty"><h2>Neem je Mac mee naar de eerste kamer</h2><p>Kies in Terminal voor Nieuwe kamer meten. Geef de kamer een naam en blijf even stilstaan.</p></section>';
+    } else {
+      html += `<div class="stats overview-stats">${stat('Kamers gemeten',rooms.length,'Laatste meting per kamer')}${stat('Goed signaal',good,'Vanaf −65 dBm')}${stat('Even bekijken',attention,'Signaal of meetwaarschuwing')}</div>`;
+      html += '<section class="room-grid" aria-label="Resultaten per kamer">';
+      for(const [index,m] of rooms.entries()) {
+        const r = num(m.rssi_dbm), level = quality(r) || 'unknown';
+        const label = r === null ? 'Nog onbekend' : r >= -65 ? 'Goed signaal' : r >= -75 ? 'Redelijk signaal' : 'Zwak signaal';
+        const note = r === null ? 'Het signaal kon niet worden uitgelezen. Controleer de locatietoegang in Terminal en meet opnieuw.' : r >= -65 ? 'Op deze meetplek is een sterk Wi-Fi-signaal gemeten.' : r >= -75 ? 'Het signaal is minder sterk. Meet eventueel op een tweede plek in deze kamer.' : 'Hier is het signaal zwak. Een tweede meting kan helpen om dit te bevestigen.';
+        const issue = [m.waarschuwing, m.ssid_komt_overeen === false ? 'Je Mac was verbonden met een ander netwerk. Vergelijk deze waarde voorzichtig.' : ''].filter(Boolean).join(' ');
+        html += `<article class="room-card"><div class="room-title"><h3>${esc(m.kamer || 'Zonder kamernaam')}</h3><span class="signal-label ${level}">${esc(label)}</span></div><p>${esc(note)}</p>${issue ? '<p class="room-warning">Deze meting verdient aandacht. Bekijk de meetdetails.</p>' : ''}<details data-disclosure="room-${index}"><summary>Meetdetails</summary><dl><dt>Signaalsterkte</dt><dd>${esc(fmtDb(r))}</dd><dt>Gemeten op</dt><dd>${esc(datefmt(m.tijdstip_utc))}</dd><dt>Aantal scans</dt><dd>${esc(val(m.scan_aantal))}</dd></dl>${issue ? `<p class="room-warning">${esc(issue)}</p>` : ''}${m.opmerking ? `<p>${esc(m.opmerking)}</p>` : ''}</details></article>`;
+      }
+      html += '</section>';
+    }
+    if (ms.length) html += `<details class="disclosure" data-disclosure="analysis"><summary>Uitgebreide analyse <span>Grafieken, accesspoints en afzonderlijke scans</span></summary><div class="disclosure-content">${technicalDetails(file,d)}</div></details>`;
+    $('app').innerHTML = html;
+  }
+
+  function technicalDetails(file,d) {
     const ms=readings(d), map=apColors([d]);
     const ssid = d.verwacht_ssid || ms.find(m=>m.ssid)?.ssid || 'Onbekend';
     const dbs=ms.map(m=>num(m.rssi_dbm)).filter(n=>n!==null);
     const switches=ms.filter((m,i)=>switchType(m,i,ms)===true).length;
     const unknown=ms.filter((m,i)=>i>0 && switchType(m,i,ms)===null).length;
-    $('meta').innerHTML=`Bestand: <b>${esc(file)}</b> &nbsp;·&nbsp; SSID: <b>${esc(ssid)}</b> &nbsp;·&nbsp; gestart: ${esc(datefmt(d.gestart_op_utc))} &nbsp;·&nbsp; interface: ${esc(val(d.wifi_interface))}`;
+    // Technische metadata blijft bij de uitgebreide analyse.
     let html = `<div class="stats">${stat('Kamermetingen',ms.length,'In meetvolgorde')}${stat('Accesspoints',map.size,'Unieke BSSID’s')}${stat('AP-wissels',switches, unknown ? `${unknown} overgang(en) onbekend`:'Tussen opeenvolgende metingen')}${stat('Gemiddelde RSSI',`${average(dbs)} <span class="units">dBm</span>`,dbs.length ? `Bereik ${Math.min(...dbs)} tot ${Math.max(...dbs)} dBm`:'Geen meetwaarden')}</div>`;
     if(warn(ms).length) html += `<div class="status warning">⚠ ${warn(ms).length} meting(en) met een waarschuwing of afwijkende SSID. Bekijk de tabel hieronder.</div>`;
     html += `<div class="layout"><section class="panel"><div class="heading"><div><h2>Signaalsterkte per kamer</h2><p class="hint">RSSI in dBm · hoger (minder negatief) is beter · kleuren tonen het accesspoint</p></div></div>${graph(ms,map)}${legend(map)}</section>`;
@@ -281,11 +366,11 @@
       html+=`<tr class="${m.waarschuwing || m.ssid_komt_overeen===false?'warnrow':''}"><td>${esc(m.nummer ?? i+1)}</td><td class="room">${esc(m.kamer || '—')}</td><td><span class="strength ${quality(m.rssi_dbm)}">${esc(fmtDb(m.rssi_dbm))}</span><div class="minor">${rssiLabel(m.rssi_dbm)}</div></td><td>${m.snr_db === null || m.snr_db === undefined?'—':esc(m.snr_db)+' dB'}</td><td>${apPill(map,m.bssid)}<div class="mono minor">${esc(val(m.bssid))}</div></td><td>${switchPill(change)}</td><td>${esc(val(m.kanaal))}</td><td style="white-space:nowrap">${esc(datefmt(m.tijdstip_utc))}</td><td class="minor">${esc([m.waarschuwing,m.opmerking].filter(Boolean).join(' · ') || '—')}</td></tr>`;
     }
     html+=`</tbody></table></div>${d.opmerkingen?`<p class="notes"><b>Algemene opmerkingen:</b> ${esc(d.opmerkingen)}</p>`:''}</section>`;
-    $('app').innerHTML=html;
+    return html;
   }
 
   function comparison() {
-    const ds=[...datasets.entries()].filter(([,e])=>e.data).map(([name,e])=>({name,data:e.data}));
+    const ds=orderedKeys().map(name=>({name,data:datasets.get(name).data}));
     if(!ds.length) return;
     const map=apColors(ds.map(d=>d.data));
     const roomMap=new Map();
@@ -316,73 +401,117 @@
   }
 
   function status(message='',type='') { $('status').textContent=message; $('status').className=`status ${type}`; }
+  function orderedKeys() {
+    return [...datasets.keys()].sort((a,b) =>
+      (datasets.get(b).updated || Date.parse(datasets.get(b).data?.gestart_op_utc) || 0) - (datasets.get(a).updated || Date.parse(datasets.get(a).data?.gestart_op_utc) || 0)
+      || b.localeCompare(a,'nl'));
+  }
   function render() {
-    const keys=[...datasets.keys()];
+    const keys=orderedKeys();
+    if(!datasets.has(selected) && selected!=='__ALL__') selected=keys[0]||'';
+    if(selected==='__ALL__' && keys.length<2) selected=keys[0]||'';
+    const signature=JSON.stringify([selected,keys.map(k=>[k,datasets.get(k).revision])]);
+    if(signature===renderSignature) return;
+    const preserve = renderSignature && renderedSelection===selected;
+    const opened = preserve ? [...$('app').querySelectorAll('details[open][data-disclosure]')].map(el=>el.dataset.disclosure) : [];
+    const focused = preserve ? document.activeElement?.closest('[data-disclosure]')?.dataset.disclosure : null;
+    renderSignature=signature;
+    renderedSelection=selected;
     $('picker').hidden=!keys.length;
     $('app').hidden=!keys.length;
     $('empty').hidden=!!keys.length;
+    $('compare').hidden=keys.length<2;
     const sel=$('dataset');
-    sel.innerHTML=(keys.length>1?'<option value="__ALL__">Alle bestanden vergelijken</option>':'') + keys.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
-    if(!datasets.has(selected) && selected!=='__ALL__') selected=keys.length>1?'__ALL__':keys[0]||'';
-    if(selected==='__ALL__' && keys.length===1) selected=keys[0];
+    sel.innerHTML=keys.map(k=>`<option value="${esc(k)}">${esc(roundLabel(k,datasets.get(k).data))}</option>`).join('') + (selected==='__ALL__'?'<option value="__ALL__">Meetrondes vergelijken</option>':'');
     sel.value=selected;
-    if(!keys.length){$('meta').textContent='';return;}
+    if(!keys.length){$('meta').textContent='';$('app').innerHTML='';return;}
     if(selected==='__ALL__') comparison();
-    else { const entry=datasets.get(selected); if (entry?.data) single(selected,entry.data); else {$('app').innerHTML='<div class="empty"><h2>Bestand niet beschikbaar</h2></div>';} }
+    else single(selected,datasets.get(selected).data);
+    for(const el of $('app').querySelectorAll('[data-disclosure]')) {
+      if(opened.includes(el.dataset.disclosure)) el.open=true;
+      if(focused===el.dataset.disclosure) el.querySelector('summary')?.focus({preventScroll:true});
+    }
+  }
+  async function fetchLocal(path) {
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),4500);
+    try {
+      const response=await fetch(path,{cache:'no-store',signal:controller.signal});
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } finally { clearTimeout(timeout); }
   }
   async function loadCatalog(quiet=false) {
-    try {
-      const res=await fetch('./api/datasets?_='+Date.now(),{cache:'no-store'});
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const list=await res.json();
-      if(!Array.isArray(list)) throw new Error('Ongeldige bestandenlijst');
-      hasServer=true;
-      for(const k of [...datasets.keys()]) if(datasets.get(k).remote && !list.includes(k)) datasets.delete(k);
-      const errors=[];
-      for(const name of list){
-        if(typeof name !== 'string' || !name.toLowerCase().endsWith('.json')) continue;
-        try {
-          const response=await fetch('./'+encodeURIComponent(name)+'?_='+Date.now(),{cache:'no-store'});
-          if(!response.ok) throw new Error(`HTTP ${response.status}`);
-          const data=await response.json();
-          if(!data || !Array.isArray(data.metingen)) throw new Error('geen veld "metingen" (array)');
-          datasets.set(name,{data,remote:true});
-        }catch(err){ errors.push(`${name}: ${err.message}`); datasets.delete(name); }
-      }
-      if(errors.length) status(`${errors.length} bestand(en) overgeslagen: ${errors.join(' | ')}`,'warning');
-      else if(!quiet) status(`${list.length} JSON-bestand(en) gevonden. Je kunt de bestanden bewerken en daarna op Vernieuwen klikken.`);
-      else status('');
-    } catch(err) {
-      hasServer=false;
-      if(!quiet || !datasets.size) status('Automatisch inlezen is niet actief. Start ./start.sh vanuit deze map, of selecteer JSON-bestanden met de knop hierboven.','warning');
+    if(catalogBusy) return;
+    if(location.protocol==='file:') {
+      $('connection').textContent='Handmatig geopend';
+      $('connection').classList.add('offline');
+      status('Open de app met ./start.sh om metingen automatisch te bekijken. Via Meer opties kun je ook een meetbestand openen.');
+      return;
     }
-    render();
+    catalogBusy=true;
+    try {
+      const list=await fetchLocal('./api/catalog');
+      if(!Array.isArray(list)) throw new Error('Ongeldige bestandenlijst');
+      $('connection').textContent='Werkt automatisch bij';
+      $('connection').classList.remove('offline');
+      const previousNewest=orderedKeys()[0];
+      const followNewest=!selected || selected===previousNewest;
+      const names=list.map(item=>item.name);
+      for(const k of [...datasets.keys()]) if(datasets.get(k).remote && !names.includes(k)) datasets.delete(k);
+      const errors=[];
+      await Promise.all(list.map(async item=>{
+        const {name,revision}=item;
+        if(typeof name!=='string' || !name.toLowerCase().endsWith('.json')) return;
+        if(datasets.get(name)?.remote && datasets.get(name).revision===revision) return;
+        try {
+          const data=await fetchLocal('./'+encodeURIComponent(name));
+          if(!data || !Array.isArray(data.metingen)) throw new Error('geen meetronde gevonden');
+          datasets.set(name,{data,remote:true,revision,updated:Number(String(revision).split('-')[0])/1000000});
+        } catch(err) { errors.push(name); }
+      }));
+      if(followNewest) selected=orderedKeys()[0] || '';
+      if(errors.length) status(`${errors.length} meetbestand(en) konden nog niet worden gelezen. De app probeert het vanzelf opnieuw.`,'warning');
+      else status('');
+      render();
+    } catch(err) {
+      $('connection').textContent='App niet verbonden';
+      $('connection').classList.add('offline');
+      status(datasets.size ? 'De app is gesloten of tijdelijk niet bereikbaar. Je laatste resultaten blijven hier staan. Open ./start.sh om verder te meten.' : 'Open ./start.sh in Terminal en laat het venster open. Je resultaten verschijnen dan vanzelf.','warning');
+    } finally { catalogBusy=false; }
   }
   async function importFiles(files){
     const errors=[];
+    let count=0;
     for(const file of files){
       if(!file.name.toLowerCase().endsWith('.json')) continue;
-      try{
-        const data=JSON.parse(await file.text());
-        if(!data || !Array.isArray(data.metingen)) throw new Error('geen veld "metingen" (array)');
+      try {
+        const text=await file.text();
+        const data=JSON.parse(text);
+        if(!data || !Array.isArray(data.metingen)) throw new Error('geen meetronde gevonden');
         let label=file.name;
-        if(datasets.has(label) && datasets.get(label).remote) label+=' (handmatig)';
-        datasets.set(label,{data,remote:false});
+        if(datasets.get(label)?.remote) label+=' (handmatig)';
+        datasets.set(label,{data,remote:false,revision:text,updated:file.lastModified || Date.now()});
         selected=label;
-      }catch(err){ errors.push(`${file.name}: ${err.message}`); }
+        count++;
+      } catch(err){ errors.push(file.name); }
     }
-    status(errors.length ? `Niet ingelezen: ${errors.join(' | ')}` : `${files.length} bestand(en) geselecteerd. Handmatig geselecteerde bestanden blijven alleen in dit browsertabblad geladen.`,errors.length?'warning':'');
+    status(errors.length ? `${errors.length} meetbestand(en) konden niet worden geopend.` : count ? 'Het meetbestand is geopend in dit browsertabblad.' : 'Kies een JSON-meetbestand.',errors.length?'warning':'');
+    $('tools').open=false;
     render();
   }
   $('dataset').addEventListener('change',ev=>{ selected=ev.target.value;render(); });
-  $('refresh').addEventListener('click',()=>loadCatalog());
-  for(const id of ['files','files-empty']) $(id).addEventListener('change',e=>{importFiles([...e.target.files]);e.target.value='';});
+  $('refresh').addEventListener('click',()=>{ $('tools').open=false;loadCatalog(); });
+  $('compare').addEventListener('click',()=>{ selected='__ALL__';$('tools').open=false;render(); });
+  $('files').addEventListener('change',e=>{importFiles([...e.target.files]);e.target.value='';});
   let drag=0;
   document.addEventListener('dragenter',e=>{e.preventDefault();drag++;document.body.classList.add('dragging');});
   document.addEventListener('dragover',e=>e.preventDefault());
   document.addEventListener('dragleave',e=>{e.preventDefault();drag=Math.max(0,drag-1);if(!drag)document.body.classList.remove('dragging');});
   document.addEventListener('drop',e=>{e.preventDefault();drag=0;document.body.classList.remove('dragging');if(e.dataTransfer?.files?.length)importFiles([...e.dataTransfer.files]);});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden) loadCatalog(true);});
   loadCatalog(true);
+  setInterval(()=>{if(!document.hidden && location.protocol!=='file:') loadCatalog(true);},3000);
 })();
 </script>
 </body>

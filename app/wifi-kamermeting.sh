@@ -48,9 +48,7 @@ HELP
 }
 
 step() {
-  printf '\n============================================================\n'
-  printf 'Stap %s van 4 · %s\n' "$1" "$2"
-  printf '============================================================\n'
+  printf '\n%s\n' "$2"
 }
 
 error_with_help() {
@@ -63,7 +61,7 @@ valid_scan_count() {
 }
 
 valid_interval() {
-  [[ "$1" =~ ^([0-9]|[12][0-9]|30)(\.[0-9]+)?$ ]]
+  [[ "$1" =~ ^(([0-9]|[12][0-9])(\.[0-9]+)?|30(\.0+)?)$ ]]
 }
 
 estimate_seconds() {
@@ -132,15 +130,14 @@ run_scan() {
   # Start via LaunchServices: dit is nodig voor CoreWLAN SSID/BSSID-rechten.
   # Het app-proces schrijft zijn JSON rechtstreeks naar RAW.
   rm -f "$RAW"
-  printf '\nMeetserie gestart: %s scan(s), %ss pauze, meestal minstens %ss.\n' \
-    "$scan_count" "$scan_interval" "$estimate"
+  printf '\nBlijf even stilstaan. Dit duurt ongeveer %s seconden, soms wat langer.\n' "$estimate"
   open -W -n -a "$APP" --args --ssid "$EXPECTED_SSID" --interface "$WIFI_INTERFACE" \
     --count "$scan_count" --interval "$scan_interval" --output "$RAW" &
   SCAN_PID=$!
   start_time=$(date '+%s')
   while kill -0 "$SCAN_PID" 2>/dev/null; do
     elapsed=$(( $(date '+%s') - start_time ))
-    printf '\r  Bezig · %ss verstreken · %s scan(s) gepland' "$elapsed" "$scan_count"
+    printf '\r  Aan het meten · %ss verstreken' "$elapsed"
     sleep 1
   done
   printf '\r%-78s\r' ' '
@@ -202,39 +199,27 @@ accesspoint_round() {
 }
 
 choose_existing_session() {
-  local latest path answer
-  if [[ -n "$RESUME_FILE" ]]; then
-    return 0
-  fi
-  if [[ -n "$DATASET" ]]; then
-    return 0
-  fi
-
+  local answer
+  [[ -z "$RESUME_FILE" && -z "$DATASET" ]] || return 0
   shopt -s nullglob
-  local datasets=("$DATA_DIR"/wifi-meting-*.json)
+  local datasets=("$DATA_DIR"/*.json)
   shopt -u nullglob
   [[ ${#datasets[@]} -gt 0 ]] || return 0
-  latest=${datasets[${#datasets[@]}-1]}
-
-  printf '\nEr staat al een eerdere meetronde in deze map.\n'
-  printf '  [1] Nieuwe meetronde starten\n'
-  printf '  [2] Laatste meetronde hervatten (%s)\n' "$(basename "$latest")"
-  printf '  [3] Een ander meetbestand hervatten\n'
-  printf 'Keuze [1]: '
-  IFS= read -r answer || exit 1
-  answer=${answer:-1}
-  case "$answer" in
-    1) ;;
-    2) RESUME_FILE=$latest ;;
-    3)
-      printf 'Pad naar het bestaande JSON-bestand: '
-      IFS= read -r path || exit 1
-      if [[ "$path" != /* ]]; then
-        if [[ -f "$DATA_DIR/$path" ]]; then path="$DATA_DIR/$path"; else path="$PWD/$path"; fi
-      fi
-      RESUME_FILE=$path ;;
-    *) echo 'Ongeldige keuze; er wordt een nieuwe meetronde gestart.' ;;
-  esac
+  while :; do
+    printf '\n  [1] Nieuwe meetronde\n'
+    printf '  [2] Verder met een eerdere meetronde\n'
+    printf '  [3] Terug naar het hoofdmenu\n'
+    printf 'Keuze [1]: '
+    IFS= read -r answer || exit 0
+    case "${answer:-1}" in
+      1) return 0 ;;
+      2)
+        RESUME_FILE=$(python3 "$DIR/dataset.py" select-session "$DATA_DIR")
+        [[ -n "$RESUME_FILE" ]] && return 0 ;;
+      3) exit 0 ;;
+      *) echo 'Kies 1, 2 of 3.' ;;
+    esac
+  done
 }
 
 load_resume_session() {
@@ -316,7 +301,7 @@ confirm_new_session() {
   local answer estimate
   while :; do
     estimate=$(estimate_seconds "$SCANS" "$INTERVAL")
-    printf '\nInstellingen\n'
+    printf '\nKlaar om te meten\n'
     printf '  Netwerk: %s\n' "$EXPECTED_SSID"
     printf '  Scans per kamer: %s\n' "$SCANS"
     printf '  Pauze tussen scans: %ss\n' "$INTERVAL"
@@ -367,15 +352,10 @@ room_round() {
   while :; do
     printf '\nKamermetingen opgeslagen: %s\n' "$ROOM_COUNT"
     printf '  [1] Nieuwe kamer meten\n'
-    if [[ -n "$PREVIOUS_ROOM" ]]; then
-      printf '  [2] Vorige kamer opnieuw meten (%s)\n' "$PREVIOUS_ROOM"
-    else
-      printf '  [2] Vorige kamer opnieuw meten (nog niet beschikbaar)\n'
-    fi
-    printf '  [3] Accesspoint identificeren of benoemen\n'
-    printf '  [4] Meetronde afronden\n'
+    printf '  [2] Andere acties\n'
+    printf '  [3] Meetronde afronden\n'
     printf 'Keuze [1]: '
-    IFS= read -r answer || answer=4
+    IFS= read -r answer || answer=3
     answer=${answer:-1}
     case "$answer" in
       1)
@@ -387,24 +367,32 @@ room_round() {
         fi
         measure_room "$room" || true ;;
       2)
-        if [[ -z "$PREVIOUS_ROOM" ]]; then
-          echo 'Er is nog geen vorige kamer om opnieuw te meten.'
-        else
-          measure_room "$PREVIOUS_ROOM" || true
-        fi ;;
-      3) identify_accesspoint || true ;;
-      4) break ;;
-      *) echo 'Kies 1, 2, 3 of 4.' ;;
+        printf '\n  [1] Vorige kamer opnieuw meten\n'
+        printf '  [2] Accesspoints een naam geven\n'
+        printf '  [3] Terug\n'
+        printf 'Keuze [3]: '
+        IFS= read -r answer || answer=3
+        case "$answer" in
+          1)
+            if [[ -z "$PREVIOUS_ROOM" ]]; then
+              echo 'Meet eerst een kamer; daarna kun je die opnieuw meten.'
+            else
+              measure_room "$PREVIOUS_ROOM" || true
+            fi ;;
+          2) accesspoint_round ;;
+          ''|3) ;;
+          *) echo 'Kies 1, 2 of 3.' ;;
+        esac ;;
+      3) break ;;
+      *) echo 'Kies 1, 2 of 3.' ;;
     esac
   done
 }
 
-printf '\nWi-Fi Kamermeting\n'
-printf 'Begeleide lokale meting · je meetgegevens verlaten deze Mac niet.\n'
+printf '\nKamers meten\n'
 
 mkdir -p "$DATA_DIR" "$RUNTIME_DIR"
 
-step 1 'Mac en Wi-Fi controleren'
 if [[ "$(uname -s)" != 'Darwin' ]]; then
   error_with_help 'deze meting werkt alleen op macOS.' 'Start het programma op de Mac waarmee je wilt meten.'
   exit 1
@@ -425,7 +413,7 @@ WIFI_INTERFACE=$(networksetup -listallhardwareports | awk '
   exit 1
 }
 
-if [[ ! -x "$APP/Contents/MacOS/WifiKamermeting" \
+if [[ "${WIFI_SCANNER_READY:-0}" != 1 ]] && [[ ! -x "$APP/Contents/MacOS/WifiKamermeting" \
    || "$DIR/WifiScan.swift" -nt "$APP/Contents/MacOS/WifiKamermeting" \
    || "$DIR/Info.plist" -nt "$APP/Contents/MacOS/WifiKamermeting" ]]; then
   printf 'De lokale Wi-Fi-helper wordt eenmalig gebouwd.\n'
@@ -434,10 +422,7 @@ fi
 
 ssid_from_shortcut=$(shortcut 'WiFi-SSID')
 associated_ap=$(bssid "$(shortcut 'WiFi-BSSID')")
-printf '✓ Python 3 gevonden\n'
-printf '✓ Wi-Fi-interface: %s\n' "$WIFI_INTERFACE"
-printf '✓ Verbonden SSID: %s\n' "${ssid_from_shortcut:-niet leesbaar}"
-printf '✓ Verbonden accesspoint: %s\n' "${associated_ap:-niet leesbaar}"
+printf 'Huidig netwerk: %s\n' "${ssid_from_shortcut:-niet automatisch leesbaar}"
 
 if [[ "$MODE" == check ]]; then
   EXPECTED_SSID=$ssid_from_shortcut
@@ -505,24 +490,16 @@ else
   printf '\nNieuwe meetronde aangemaakt: %s\n' "$(basename "$DATASET")"
 fi
 
-step 3 'Accesspoints voorbereiden'
-printf 'Je kunt accesspoints nu herkenbare namen geven, of dit later doen.\n'
-printf '  [1] Meteen kamers gaan meten\n'
-printf '  [2] Eerst accesspoints identificeren\n'
-printf 'Keuze [1]: '
-IFS= read -r identify_answer || identify_answer=1
-identify_answer=${identify_answer:-1}
-case "$identify_answer" in
-  2) accesspoint_round ;;
-  1) ;;
-  *) echo 'Ongeldige keuze; de accesspointronde wordt overgeslagen.' ;;
-esac
-
-step 4 'Kamers meten'
-printf 'Kies steeds een actie. Na iedere geslaagde kamer wordt het JSON-bestand direct opgeslagen.\n'
+step 4 'Loop naar de eerste kamer'
+printf 'Geef de kamer een naam en blijf tijdens de meting op dezelfde plek staan.\n'
+printf 'Elke kamer wordt direct bewaard. Resultaten verschijnen vanzelf in de browser.\n'
 room_round
 
 python3 "$DIR/dataset.py" summary "$DATASET"
+if [[ "${WIFI_APP_MANAGED:-0}" == 1 ]]; then
+  printf '\nJe resultaten zijn bijgewerkt. Je kunt nu verder in het hoofdmenu.\n'
+  exit 0
+fi
 printf '\nWat wil je nu doen?\n'
 printf '  [1] Dashboard openen\n'
 printf '  [2] Afsluiten\n'
