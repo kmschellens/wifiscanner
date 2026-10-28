@@ -1,0 +1,156 @@
+{
+  "metingen": [
+    {
+      "nummer": 1,
+      "kamer": "Voorbeeldkamer",
+      "tijdstip_utc": "2026-01-01T12:00:00Z",
+      "meting_gestart_utc": "2026-01-01T12:00:00Z",
+      "ssid": "VoorbeeldNetwerk",
+      "ssid_komt_overeen": true,
+      "bssid": "02:00:00:00:00:01",
+      "vorige_bssid": null,
+      "accesspoint_gewisseld": null,
+      "rssi_dbm": -71.5,
+      "ruis_dbm": -93.0,
+      "snr_db": 21.5,
+      "kanaal": 44,
+      "bron": "CoreWLAN-scan + Shortcuts (indien beschikbaar)",
+      "waarschuwing": null,
+      "opmerking": "",
+      "scan_aantal": 4,
+      "verbonden_bssid_begin": "02:00:00:00:00:01",
+      "verbonden_bssid_einde": "02:00:00:00:00:01",
+      "verbonden_bssid_tijdens_scans": [
+        "02:00:00:00:00:01"
+      ],
+      "verbonden_rssi_gemiddeld_dbm": -71.5,
+      "accesspoints": [
+        {
+          "bssid": "02:00:00:00:00:02",
+          "rssi_gemiddeld_dbm": -48.5,
+          "rssi_min_dbm": -50,
+          "rssi_max_dbm": -47,
+          "rssi_laatste_dbm": -47,
+          "aantal_metingen": 4,
+          "aantal_scans_gezien": 4,
+          "dekking_procent": 100,
+          "ruis_gemiddeld_dbm": -90.0,
+          "kanaal": 6,
+          "verbonden_bij_afsluiten": false
+        },
+        {
+          "bssid": "02:00:00:00:00:01",
+          "rssi_gemiddeld_dbm": -71.5,
+          "rssi_min_dbm": -73,
+          "rssi_max_dbm": -70,
+          "rssi_laatste_dbm": -70,
+          "aantal_metingen": 4,
+          "aantal_scans_gezien": 4,
+          "dekking_procent": 100,
+          "ruis_gemiddeld_dbm": -93.0,
+          "kanaal": 44,
+          "verbonden_bij_afsluiten": true
+        }
+      ],
+      "sterkste_bssid": "02:00:00:00:00:02",
+      "verschil_sterkste_en_verbonden_db": 23.0,
+      "scan_details": [
+        {
+          "nummer": 1,
+          "tijdstip_utc": "2026-01-01T12:00:00Z",
+          "verbonden_bssid": "02:00:00:00:00:01",
+          "verbonden_ssid": "VoorbeeldNetwerk",
+          "verbonden_rssi_dbm": -72,
+          "aps": [
+            {
+              "bssid": "02:00:00:00:00:01",
+              "rssi_dbm": -73,
+              "kanaal": 44,
+              "ruis_dbm": -93
+            },
+            {
+              "bssid": "02:00:00:00:00:02",
+              "rssi_dbm": -50,
+              "kanaal": 6,
+              "ruis_dbm": -90
+            }
+          ]
+        },
+        {
+          "nummer": 2,
+          "tijdstip_utc": "2026-01-01T12:00:02Z",
+          "verbonden_bssid": "02:00:00:00:00:01",
+          "verbonden_ssid": "VoorbeeldNetwerk",
+          "verbonden_rssi_dbm": -71,
+          "aps": [
+            {
+              "bssid": "02:00:00:00:00:01",
+              "rssi_dbm": -72,
+              "kanaal": 44,
+              "ruis_dbm": -93
+            },
+            {
+              "bssid": "02:00:00:00:00:02",
+              "rssi_dbm": -49,
+              "kanaal": 6,
+              "ruis_dbm": -90
+            }
+          ]
+        },
+        {
+          "nummer": 3,
+          "tijdstip_utc": "2026-01-01T12:00:04Z",
+          "verbonden_bssid": "02:00:00:00:00:01",
+          "verbonden_ssid": "VoorbeeldNetwerk",
+          "verbonden_rssi_dbm": -72,
+          "aps": [
+            {
+              "bssid": "02:00:00:00:00:01",
+              "rssi_dbm": -71,
+              "kanaal": 44,
+              "ruis_dbm": -93
+            },
+            {
+              "bssid": "02:00:00:00:00:02",
+              "rssi_dbm": -48,
+              "kanaal": 6,
+              "ruis_dbm": -90
+            }
+          ]
+        },
+        {
+          "nummer": 4,
+          "tijdstip_utc": "2026-01-01T12:00:06Z",
+          "verbonden_bssid": "02:00:00:00:00:01",
+          "verbonden_ssid": "VoorbeeldNetwerk",
+          "verbonden_rssi_dbm": -71,
+          "aps": [
+            {
+              "bssid": "02:00:00:00:00:01",
+              "rssi_dbm": -70,
+              "kanaal": 44,
+              "ruis_dbm": -93
+            },
+            {
+              "bssid": "02:00:00:00:00:02",
+              "rssi_dbm": -47,
+              "kanaal": 6,
+              "ruis_dbm": -90
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "verwacht_ssid": "VoorbeeldNetwerk",
+  "schema_versie": 3,
+  "gestart_op_utc": "2026-01-01T12:00:00Z",
+  "wifi_interface": "en0",
+  "scans_per_kamer": 4,
+  "interval_tussen_scans_seconden": 2,
+  "accesspoint_namen": {
+    "02:00:00:00:00:01": "Voorbeeld-AP 1",
+    "02:00:00:00:00:02": "Voorbeeld-AP 2"
+  },
+  "opmerkingen": ""
+}

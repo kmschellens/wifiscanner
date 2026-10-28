@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Wi-Fi kamermetingen — dashboard</title>
+  <style>
+    :root { --bg: #0a101c; --card: #121d2d; --card2: #162337; --edge: #2b3a50; --fg: #f1f5fb; --muted: #a6b5cb; --bright: #6ee7cf; --blue: #83b5ff; --good: #75dfa8; --warn: #ffd58a; --bad: #ff969c; --shadow: 0 14px 40px rgba(0,0,0,.15); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(ellipse 75% 28% at 85% -8%, #173753 0%, transparent 80%), var(--bg); color: var(--fg); font: 15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button, select { font: inherit; }
+    button, .upload { cursor: pointer; }
+    button:focus-visible, select:focus-visible, .upload:focus-within { outline: 2px solid var(--bright); outline-offset: 3px; }
+    .container { max-width: 1320px; margin: auto; padding: 30px clamp(16px,3.2vw,44px) 56px; }
+    .top { display: flex; justify-content: space-between; gap: 20px; align-items: start; flex-wrap: wrap; padding-bottom: 24px; }
+    .brand { display: flex; align-items: center; gap: 15px; }
+    .logo { width: 53px; height: 53px; border: 1px solid #347e83; border-radius: 15px; display: grid; place-items: center; background: linear-gradient(135deg,#153846,#162641); flex: none; }
+    h1 { font-size: clamp(25px,3.2vw,34px); letter-spacing: -.9px; line-height: 1.15; margin: 0 0 5px; }
+    .sub { color: var(--muted); margin: 0; font-size: 14px; }
+    .actions { display: flex; gap: 9px; flex-wrap: wrap; padding-top: 7px; }
+    .btn, .upload { border: 1px solid #3b526a; background: #1a2b40; color: var(--fg); padding: 10px 15px; border-radius: 10px; font-weight: 600; transition: background .15s; display: inline-flex; gap: 8px; align-items: center; }
+    .btn:hover,.upload:hover { background: #253b54; }
+    .btn.primary { color: #051921; border-color: #7be7d0; background: var(--bright); }
+    .btn.primary:hover { background: #b1f3e3; }
+    .upload input { display: none; }
+    .status { padding: 12px 16px; border: 1px solid var(--edge); border-radius: 12px; background: #102031; color: var(--muted); margin: 0 0 20px; }
+    .status:empty { display: none; }
+    .status.warning { border-color: #886645; color: #f4d7ab; }
+    .status.error { border-color: #a75157; color: #ffc0bd; }
+    .picker { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 21px; }
+    .picker label { color: var(--muted); font-weight: 600; }
+    select { min-width: min(100%,370px); max-width: 100%; border: 1px solid #3b526a; border-radius: 10px; padding: 11px 14px; color: var(--fg); background: #1a2b40; }
+    .meta { color: var(--muted); margin: -7px 0 22px; font-size: 13px; overflow-wrap: anywhere; }
+    .stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
+    .stat { border: 1px solid var(--edge); background: linear-gradient(120deg,#162436,var(--card)); padding: 18px; border-radius: 14px; min-width: 0; box-shadow: var(--shadow); }
+    .stat-label { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 9px; }
+    .stat-value { font-weight: 750; font-size: clamp(24px,2.6vw,33px); line-height: 1.12; letter-spacing: -.7px; font-variant-numeric: tabular-nums; }
+    .stat-extra { color: var(--muted); font-size: 12px; margin-top: 7px; }
+    .units { font-size: 14px; font-weight: 500; color: var(--muted); }
+    .panel { border: 1px solid var(--edge); border-radius: 15px; background: var(--card); padding: 22px; min-width: 0; box-shadow: var(--shadow); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(255px,1fr); gap: 18px; margin-bottom: 18px; }
+    h2 { margin: 0; font-size: 19px; letter-spacing: -.3px; }
+    .heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; margin-bottom: 13px; }
+    .hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+    .graph-scroll { overflow-x: auto; padding-bottom: 2px; }
+    .graph-scroll svg { display: block; max-width: none; }
+    .legend { display: flex; flex-wrap: wrap; gap: 9px 17px; margin-top: 14px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); max-width: 100%; overflow-wrap: anywhere; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .ap-list { display: flex; flex-direction: column; gap: 11px; }
+    .ap-entry { display: flex; gap: 11px; border-bottom: 1px solid #253448; padding-bottom: 11px; }
+    .ap-entry:last-child { border: 0; }
+    .ap-name { font-weight: 750; }
+    .mono { font: 12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow-wrap: anywhere; }
+    .minor { color: var(--muted); font-size: 12px; }
+    .section { margin: 18px 0; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th { text-transform: uppercase; letter-spacing: .05em; font-size: 11px; color: var(--muted); font-weight: 700; padding: 13px 11px; border-bottom: 1px solid #3b4c61; white-space: nowrap; }
+    td { padding: 14px 11px; border-bottom: 1px solid #283648; vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    tr:hover td { background: #19293c; }
+    .room { font-weight: 650; min-width: 130px; }
+    .pill { display: inline-flex; gap: 5px; align-items: center; padding: 3px 8px; border: 1px solid #46536a; border-radius: 6px; font-size: 11px; font-weight: 680; white-space: nowrap; }
+    .pill.yes { background: #3b2b23; color: var(--warn); border-color: #765b36; }
+    .pill.no { background: #20342f; color: var(--good); border-color: #375e53; }
+    .pill.unknown { color: var(--muted); background: #1f2c3c; }
+    .strength { font-weight: 730; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .strength.good { color: var(--good); }
+    .strength.mid { color: var(--warn); }
+    .strength.weak { color: var(--bad); }
+    .timeline { display: flex; overflow-x: auto; gap: 10px; padding: 3px 0 8px; }
+    .stop { flex: 0 0 158px; border: 1px solid #3a4a60; border-radius: 11px; padding: 12px; background: #19273a; position: relative; }
+    .stop.switched { border-color: #c18d51; background: #29293a; }
+    .stop-count { font-size: 11px; color: var(--muted); }
+    .stop-name { font-weight: 690; height: 42px; overflow: hidden; overflow-wrap: anywhere; line-height: 1.35; margin: 6px 0 10px; }
+    .stop-db { font-weight: 780; font-size: 22px; font-variant-numeric: tabular-nums; }
+    .stop-id { margin-top: 5px; font-size: 11px; }
+    .notes { margin: 12px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+    .empty { border: 1px dashed #3e5570; border-radius: 16px; padding: 65px 24px; text-align: center; background: #101c2b; }
+    .empty h2 { font-size: 23px; margin-bottom: 12px; }
+    .empty p { max-width: 570px; margin: 0 auto 18px; color: var(--muted); }
+    code { font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color: #9cebdc; }
+    .footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
+    .warnrow { background: rgba(205,121,63,.055); }
+    .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
+    .compare-cell { min-width: 140px; }
+    .compare-file { max-width: 175px; white-space: normal; overflow-wrap: anywhere; }
+    #app[hidden], #empty[hidden] { display:none !important; }
+    body.dragging::before { content: 'Laat de JSON-bestanden hier los'; position: fixed; z-index: 50; inset: 14px; border: 3px dashed var(--bright); display: grid; place-items: center; color: var(--bright); font-size: 26px; font-weight: bold; background: rgba(10,16,28,.94); border-radius: 18px; pointer-events: none; }
+    @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+    @media (max-width: 500px) { .stats { gap: 9px; } .stat { padding: 14px 12px; } .container { padding-top: 19px; } .top { gap: 12px; } .panel { padding: 17px 13px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="#7ef1d6" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.7 15.3a5 5 0 0 1 6.6 0"/><circle cx="12" cy="19.5" r="1.2" fill="#7ef1d6" stroke="none"/></svg></div>
+        <div><h1>Wi-Fi kamermetingen</h1><p class="sub">Signaalsterkte &middot; accesspoints &middot; roaming</p></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="refresh" type="button">↻ Vernieuwen</button>
+        <label class="upload">+ Open JSON-bestanden<input id="files" type="file" accept=".json,application/json" multiple></label>
+      </div>
+    </header>
+
+    <div class="status" id="status" role="status"></div>
+    <div class="picker" id="picker" hidden><label for="dataset">Bestand / overzicht</label><select id="dataset" aria-label="Selecteer meting"></select></div>
+    <div class="meta" id="meta"></div>
+    <main id="app" hidden></main>
+    <section id="empty" class="empty">
+      <h2>Je metingen verschijnen hier</h2>
+      <p>Zet <code>index.html</code>, <code>server.py</code> en je meetbestanden (<code>*.json</code>) in dezelfde map. Start <code>./start.sh</code>, of klik hierboven op <b>Open JSON-bestanden</b>.</p>
+      <label class="upload">Selecteer JSON-bestanden<input id="files-empty" type="file" accept=".json,application/json" multiple></label>
+    </section>
+    <footer class="footer">Alle metingen blijven lokaal op je Mac. Scan-RSSI is een afzonderlijke meting van link-RSSI. RSSI is negatief: −50 dBm is sterker dan −80 dBm. Een BSSID-wissel wordt alleen tussen twee meetmomenten gedetecteerd; niet op het exacte moment van roaming.</footer>
+  </div>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const palette = ['#68e4cb', '#83b5ff', '#ffbf76', '#d7a2ff', '#ff869b', '#d3e47c', '#78c6e9', '#f6a7ce', '#b2b9ff'];
+  const datasets = new Map();
+  let selected = '';
+  let hasServer = false;
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const val = v => v === null || v === undefined || v === '' ? '—' : String(v);
+  const num = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
+  const fmtDb = v => num(v) === null ? '—' : `${v} dBm`;
+  const datefmt = v => { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString('nl-NL', {dateStyle:'short',timeStyle:'medium'}); };
+  const average = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1).replace('.',',') : '—';
+  const quality = r => num(r) === null ? '' : r >= -65 ? 'good' : r >= -75 ? 'mid' : 'weak';
+  const rssiLabel = r => num(r) === null ? 'Onbekend' : r >= -65 ? 'Goed' : r >= -75 ? 'Matig' : 'Zwak';
+  const compact = (s,n=19) => String(s ?? '—').length > n ? String(s).slice(0,n-1)+'…' : String(s ?? '—');
+  const uniq = xs => [...new Set(xs.filter(x => x !== null && x !== undefined && String(x).trim()))];
+  const apKey = v => typeof v === 'string' && v.trim() ? v.toLowerCase().trim() : null;
+  const roomKey = v => String(v ?? '').trim().toLocaleLowerCase('nl');
+  const readings = data => Array.isArray(data?.metingen) ? data.metingen : [];
+  const apColors = data => {
+    const configured = new Map();
+    for (const d of data) {
+      if (!d?.accesspoint_namen || typeof d.accesspoint_namen !== 'object' || Array.isArray(d.accesspoint_namen)) continue;
+      for (const [rawBssid, rawName] of Object.entries(d.accesspoint_namen)) {
+        const bssid=apKey(rawBssid), name=typeof rawName === 'string' ? rawName.trim() : '';
+        if (bssid && name && !configured.has(bssid)) configured.set(bssid,name);
+      }
+    }
+    const keys = uniq(data.flatMap(d => readings(d).flatMap(m => [apKey(m.bssid), ...(Array.isArray(m.accesspoints) ? m.accesspoints.map(ap => apKey(ap.bssid)) : [])])));
+    return new Map(keys.map((b,i) => [b, {label:configured.get(b) || `AP ${i+1}`, color:palette[i%palette.length]}]));
+  };
+  const apColor = (map,b) => map.get(apKey(b))?.color || '#8593a9';
+  const apLabel = (map,b) => map.get(apKey(b))?.label || 'AP onbekend';
+  const switchType = (m,i,ms) => { if (i === 0) return null; if (m.accesspoint_gewisseld === true || m.accesspoint_gewisseld === false) return m.accesspoint_gewisseld; const p = apKey(ms[i-1]?.bssid), c = apKey(m.bssid); return p && c ? p !== c : null; };
+  const switchPill = s => s === true ? '<span class="pill yes">↪ Gewisseld</span>' : s === false ? '<span class="pill no">Zelfde AP</span>' : '<span class="pill unknown">Onbekend</span>';
+  const stat = (label,value,extra) => `<div class="stat"><div class="stat-label">${esc(label)}</div><div class="stat-value">${value}</div><div class="stat-extra">${esc(extra)}</div></div>`;
+  const apPill = (map,b) => `<span class="pill" style="border-color:${apColor(map,b)};color:${apColor(map,b)}">${esc(apLabel(map,b))}</span>`;
+  const legend = (map) => `<div class="legend">${[...map.entries()].map(([b,a])=>`<div class="legend-item"><span class="dot" style="background:${a.color}"></span><b style="color:#f1f5fb">${esc(a.label)}</b><span class="mono">${esc(b)}</span></div>`).join('') || '<span class="minor">Geen BSSID beschikbaar</span>'}</div>`;
+  const warn = ms => ms.filter(m => m.ssid_komt_overeen === false || m.waarschuwing);
+
+  function graph(ms, map) {
+    if (!ms.length || !ms.some(m => num(m.rssi_dbm) !== null)) return '<p class="minor">Geen RSSI-metingen beschikbaar.</p>';
+    const width = Math.max(680, ms.length*84+100), height = 285;
+    const left = 45, right = 24, top = 20, bottom = 74;
+    const plotH = height-top-bottom, plotW=width-left-right;
+    const y = r => top + (-40-r)/60*plotH;
+    const x = i => ms.length === 1 ? left+plotW/2 : left+plotW*i/(ms.length-1);
+    let svg = '';
+    for(const tick of [-40,-50,-60,-70,-80,-90,-100]){
+      const yy = y(tick);
+      svg += `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" stroke="#34455d" stroke-dasharray="3 6"/><text x="${left-9}" y="${yy+4}" text-anchor="end" font-size="11" fill="#a6b5cb">${tick}</text>`;
+    }
+    let prev = null;
+    ms.forEach((m,i)=>{
+      const xx=x(i), rr=num(m.rssi_dbm);
+      if(rr !== null && rr <= -40 && rr >= -100){
+        if(prev) svg+=`<line x1="${prev.x}" y1="${prev.y}" x2="${xx}" y2="${y(rr)}" stroke="#aec3de" stroke-width="2.1" opacity=".65"/>`;
+        prev={x:xx,y:y(rr)};
+      } else prev=null;
+    });
+    ms.forEach((m,i)=>{
+      const xx=x(i), rr=num(m.rssi_dbm), change=switchType(m,i,ms);
+      if(change === true) svg+=`<line x1="${xx}" y1="${top-3}" x2="${xx}" y2="${height-bottom}" stroke="#f5bd73" stroke-width="1.3" stroke-dasharray="5 5" opacity=".85"/>`;
+      if(rr!==null && rr <= -40 && rr >= -100){
+        svg+=`<circle cx="${xx}" cy="${y(rr)}" r="${change===true?7:5.5}" fill="${apColor(map,m.bssid)}" stroke="#101b2a" stroke-width="2"><title>${esc(m.kamer)}: ${rr} dBm; ${esc(val(m.bssid))}</title></circle>`;
+        svg+=`<text x="${xx}" y="${y(rr)-14}" text-anchor="middle" font-size="11" font-weight="700" fill="#e1e9f4">${rr}</text>`;
+      }
+      svg+=`<text x="${xx}" y="${height-bottom+21}" text-anchor="middle" font-size="11" fill="#e0eaf4">${i+1}</text>`;
+      svg+=`<text x="${xx}" y="${height-bottom+39}" text-anchor="middle" font-size="11" fill="#a6b5cb">${esc(compact(m.kamer,11))}</text>`;
+    });
+    svg+=`<text x="${width/2}" y="${height-6}" fill="#a6b5cb" text-anchor="middle" font-size="11">Kamers in meetvolgorde</text>`;
+    return `<div class="graph-scroll"><svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Grafiek met RSSI per kamermeting, gekleurd naar accesspoint">${svg}</svg></div>`;
+  }
+
+  // Multi-AP surveys (schema 2/3), maar schema 1 blijft volledig leesbaar.
+  function multiGraph(ms,map) {
+    const aps=uniq(ms.flatMap(m => Array.isArray(m.accesspoints) ? m.accesspoints.map(ap=>apKey(ap.bssid)) : []));
+    if(!aps.length) return '<p class="minor">Geen individuele BSSID-scans beschikbaar in deze dataset.</p>';
+    const width=Math.max(740, ms.length*138+130), height=325;
+    const L=54,R=28,T=24,B=84, W=width-L-R, H=height-T-B;
+    const x=i=>ms.length===1?L+W/2:L+W*i/(ms.length-1);
+    const y=v=>T+(-30-Math.max(-100,Math.min(-30,v)))/70*H;
+    let svg='';
+    for(let v=-30;v>=-100;v-=10) svg+=`<line x1="${L}" y1="${y(v)}" x2="${width-R}" y2="${y(v)}" stroke="#34455d" stroke-dasharray="3 6"/><text x="${L-9}" y="${y(v)+4}" text-anchor="end" fill="#a6b5cb" font-size="11">${v}</text>`;
+    for(let i=0;i<ms.length;i++) {
+      svg+=`<text x="${x(i)}" y="${height-B+19}" text-anchor="middle" font-size="11" fill="#e0eaf4">${i+1}</text><text x="${x(i)}" y="${height-B+36}" text-anchor="middle" font-size="11" fill="#a6b5cb">${esc(compact(ms[i].kamer,15))}</text>`;
+    }
+    for(const b of aps) {
+      const c=apColor(map,b);
+      let prev=null;
+      ms.forEach((m,i)=>{
+        const ap=(m.accesspoints||[]).find(a=>apKey(a.bssid)===b);
+        const v=num(ap?.rssi_gemiddeld_dbm);
+        if(v===null) {prev=null;return;}
+        const xx=x(i), yy=y(v);
+        if(prev) svg+=`<line x1="${prev[0]}" y1="${prev[1]}" x2="${xx}" y2="${yy}" stroke="${c}" stroke-width="2.5" opacity=".8"/>`;
+        const connected=apKey(m.bssid)===b;
+        svg+=`<circle cx="${xx}" cy="${yy}" r="${connected?7:5}" fill="${c}" stroke="${connected?'#ffffff':'#101b2a'}" stroke-width="${connected?2.5:1.5}"><title>${esc(m.kamer)} · ${esc(apLabel(map,b))} · ${esc(b)} · gem. ${v} dBm · ${ap.aantal_scans_gezien} scans${connected?' · VERBONDEN':''}</title></circle>`;
+        prev=[xx,yy];
+      });
+    }
+    return `<div class="graph-scroll"><svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gemiddelde RSSI per BSSID per kamer">${svg}</svg></div>`;
+  }
+  function multiSection(ms,map) {
+    const scanned=ms.some(m => Array.isArray(m.accesspoints));
+    if(!scanned) return '';
+    const aps=uniq(ms.flatMap(m=>Array.isArray(m.accesspoints)?m.accesspoints.map(a=>apKey(a.bssid)):[]));
+    let html=`<section class="panel section"><div class="heading"><div><h2>Alle accesspoints per kamer</h2><p class="hint">Actieve CoreWLAN-scans voor hetzelfde SSID. Elke kleur = BSSID, ieder punt = gemiddelde RSSI uit meerdere scans; een witte rand = verbonden AP.</p></div></div>${multiGraph(ms,map)}${legend(map)}</section>`;
+    html+=`<section class="panel section"><div class="heading"><div><h2>Signaalmatrix per BSSID</h2><p class="hint">Per kamer gemiddelde RSSI (dBm), bereik en aantal scans. Een lege cel betekent: deze BSSID is tijdens de scans niet waargenomen of kon niet geïdentificeerd worden.</p></div></div><div class="table-wrap"><table><thead><tr><th>Accesspoint (BSSID)</th>${ms.map((m,i)=>`<th>${i+1}. ${esc(m.kamer)}</th>`).join('')}</tr></thead><tbody>`;
+    for(const b of aps){
+      html+=`<tr><td>${apPill(map,b)}<div class="mono minor">${esc(b)}</div></td>`;
+      for(const m of ms){
+        const ap=(m.accesspoints||[]).find(a=>apKey(a.bssid)===b);
+        if(!ap){html+='<td class="minor">—</td>';continue;}
+        const connected=apKey(m.bssid)===b;
+        html+=`<td><span class="strength ${quality(ap.rssi_gemiddeld_dbm)}">${esc(fmtDb(ap.rssi_gemiddeld_dbm))}</span>${connected?'<div class="pill no">● Verbonden</div>':''}<div class="minor">${esc(ap.rssi_min_dbm)} tot ${esc(ap.rssi_max_dbm)} dBm</div><div class="minor">${esc(ap.aantal_scans_gezien)} / ${esc(m.scan_aantal)} scans</div></td>`;
+      }
+      html+='</tr>';
+    }
+    html+=`</tbody></table></div>${!aps.length?'<p class="minor">Er zijn nog geen leesbare BSSID-scans. Controleer de locatietoegang voor WifiKamermeting.</p>':''}</section>`;
+    html+=`<section class="panel section"><div class="heading"><div><h2>Scanresultaten per kamer</h2><p class="hint">Uitklapbare ruwe waarnemingen, ook van wisselingen tijdens een kamerbezoek.</p></div></div>`;
+    for(const m of ms){
+      const scans=Array.isArray(m.scan_details)?m.scan_details:[];
+      html+=`<details style="margin-bottom:12px;border:1px solid #304157;border-radius:10px;padding:10px 14px"><summary style="cursor:pointer;font-weight:600">${esc(m.kamer)} · ${scans.length} scan(s), ${Array.isArray(m.accesspoints)?m.accesspoints.length:0} BSSID’s</summary><div class="table-wrap"><table><thead><tr><th>Scan</th><th>Tijd</th><th>AP</th><th>RSSI</th><th>Kanaal</th></tr></thead><tbody>`;
+      for(const scan of scans){const sas=Array.isArray(scan.aps)?scan.aps:[];
+        if(!sas.length)html+=`<tr><td>${esc(scan.nummer)}</td><td>${esc(datefmt(scan.tijdstip_utc))}</td><td colspan="3" class="minor">Geen BSSID’s gedetecteerd</td></tr>`;
+        for(const ap of sas)html+=`<tr><td>${esc(scan.nummer)}</td><td>${esc(datefmt(scan.tijdstip_utc))}</td><td>${apPill(map,ap.bssid)}<div class="mono minor">${esc(ap.bssid)}</div></td><td>${esc(fmtDb(ap.rssi_dbm))}</td><td>${esc(val(ap.kanaal))}</td></tr>`;
+      }
+      html+='</tbody></table></div></details>';
+    }
+    return html+'</section>';
+  }
+
+  function single(file,d) {
+    const ms=readings(d), map=apColors([d]);
+    const ssid = d.verwacht_ssid || ms.find(m=>m.ssid)?.ssid || 'Onbekend';
+    const dbs=ms.map(m=>num(m.rssi_dbm)).filter(n=>n!==null);
+    const switches=ms.filter((m,i)=>switchType(m,i,ms)===true).length;
+    const unknown=ms.filter((m,i)=>i>0 && switchType(m,i,ms)===null).length;
+    $('meta').innerHTML=`Bestand: <b>${esc(file)}</b> &nbsp;·&nbsp; SSID: <b>${esc(ssid)}</b> &nbsp;·&nbsp; gestart: ${esc(datefmt(d.gestart_op_utc))} &nbsp;·&nbsp; interface: ${esc(val(d.wifi_interface))}`;
+    let html = `<div class="stats">${stat('Kamermetingen',ms.length,'In meetvolgorde')}${stat('Accesspoints',map.size,'Unieke BSSID’s')}${stat('AP-wissels',switches, unknown ? `${unknown} overgang(en) onbekend`:'Tussen opeenvolgende metingen')}${stat('Gemiddelde RSSI',`${average(dbs)} <span class="units">dBm</span>`,dbs.length ? `Bereik ${Math.min(...dbs)} tot ${Math.max(...dbs)} dBm`:'Geen meetwaarden')}</div>`;
+    if(warn(ms).length) html += `<div class="status warning">⚠ ${warn(ms).length} meting(en) met een waarschuwing of afwijkende SSID. Bekijk de tabel hieronder.</div>`;
+    html += `<div class="layout"><section class="panel"><div class="heading"><div><h2>Signaalsterkte per kamer</h2><p class="hint">RSSI in dBm · hoger (minder negatief) is beter · kleuren tonen het accesspoint</p></div></div>${graph(ms,map)}${legend(map)}</section>`;
+    html += `<section class="panel"><div class="heading"><div><h2>Gevonden accesspoints</h2><p class="hint">BSSID = specifieke Wi-Fi-radio of cel; ook AP’s waarop je Mac niet verbonden was</p></div></div><div class="ap-list">`;
+    for(const [b,a] of map) {
+      const apMs = ms.filter(m => apKey(m.bssid) === b), r = ms.map(m => (m.accesspoints||[]).find(a=>apKey(a.bssid)===b)?.rssi_gemiddeld_dbm ?? (apKey(m.bssid)===b?m.rssi_dbm:null)).map(num).filter(v=>v!==null);
+      html += `<div class="ap-entry"><span class="dot" style="background:${a.color};margin-top:7px;width:12px;height:12px"></span><div><div class="ap-name">${esc(a.label)} <span class="minor">· ${apMs.length} meting(en)</span></div><div class="mono minor">${esc(b)}</div><div class="minor">Gemiddeld ${average(r)} dBm</div></div></div>`;
+    }
+    html+=`</div>${!map.size ? '<p class="minor">Er zijn geen BSSID’s in dit bestand.</p>':''}</section></div>`;
+    html+=multiSection(ms,map);
+    html+=`<section class="panel section"><div class="heading"><div><h2>Looproute & roaming</h2><p class="hint">Oranje kader = verbonden met een ander AP dan bij de vorige meting. Scroll horizontaal voor meer kamers.</p></div></div><div class="timeline">`;
+    for(const [i,m] of ms.entries()){
+      const change=switchType(m,i,ms);
+      html+=`<div class="stop${change===true?' switched':''}"><div class="stop-count">#${esc(m.nummer ?? i+1)} ${change===true?' · ↪ AP-WISSEL':''}</div><div class="stop-name" title="${esc(m.kamer)}">${esc(m.kamer || 'Zonder kamernaam')}</div><div class="stop-db ${quality(m.rssi_dbm)}">${esc(fmtDb(m.rssi_dbm))}</div><div class="stop-id" style="color:${apColor(map,m.bssid)}">${esc(apLabel(map,m.bssid))}</div><div class="minor">${esc(datefmt(m.tijdstip_utc))}</div></div>`;
+    }
+    html += `</div></section>`;
+    html += `<section class="panel section"><div class="heading"><div><h2>Alle metingen</h2><p class="hint">Details, waarschuwingen en notities uit je JSON.</p></div></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Kamer</th><th>RSSI</th><th>SNR</th><th>Accesspoint</th><th>Roaming</th><th>Kanaal</th><th>Tijdstip</th><th>Opmerking</th></tr></thead><tbody>`;
+    for(const [i,m] of ms.entries()){
+      const change=switchType(m,i,ms);
+      html+=`<tr class="${m.waarschuwing || m.ssid_komt_overeen===false?'warnrow':''}"><td>${esc(m.nummer ?? i+1)}</td><td class="room">${esc(m.kamer || '—')}</td><td><span class="strength ${quality(m.rssi_dbm)}">${esc(fmtDb(m.rssi_dbm))}</span><div class="minor">${rssiLabel(m.rssi_dbm)}</div></td><td>${m.snr_db === null || m.snr_db === undefined?'—':esc(m.snr_db)+' dB'}</td><td>${apPill(map,m.bssid)}<div class="mono minor">${esc(val(m.bssid))}</div></td><td>${switchPill(change)}</td><td>${esc(val(m.kanaal))}</td><td style="white-space:nowrap">${esc(datefmt(m.tijdstip_utc))}</td><td class="minor">${esc([m.waarschuwing,m.opmerking].filter(Boolean).join(' · ') || '—')}</td></tr>`;
+    }
+    html+=`</tbody></table></div>${d.opmerkingen?`<p class="notes"><b>Algemene opmerkingen:</b> ${esc(d.opmerkingen)}</p>`:''}</section>`;
+    $('app').innerHTML=html;
+  }
+
+  function comparison() {
+    const ds=[...datasets.entries()].filter(([,e])=>e.data).map(([name,e])=>({name,data:e.data}));
+    if(!ds.length) return;
+    const map=apColors(ds.map(d=>d.data));
+    const roomMap=new Map();
+    for(const d of ds) for(const m of readings(d.data)) {
+      const key=roomKey(m.kamer); if(!key) continue;
+      if(!roomMap.has(key)) roomMap.set(key,{label:m.kamer, values:new Map()});
+      roomMap.get(key).values.set(d.name,m); // laatste meting per kamer per bestand
+    }
+    const rooms=[...roomMap.values()];
+    $('meta').textContent=`${ds.length} JSON-bestand(en) · ${rooms.length} verschillende kamers · laatste meting per kamer per bestand`;
+    const total=ds.reduce((n,d)=>n+readings(d.data).length,0);
+    const switches=ds.reduce((n,d)=>n+readings(d.data).filter((m,i)=>switchType(m,i,readings(d.data))===true).length,0);
+    let html=`<div class="stats">${stat('Datasets',ds.length,'JSON-bestanden')}${stat('Kamers',rooms.length,'Verschillende kamernamen')}${stat('Metingen',total,'Alle sessies samen')}${stat('AP-wissels',switches,'Binnen de afzonderlijke datasets')}</div>`;
+    html+=`<section class="panel section"><div class="heading"><div><h2>Vergelijking per kamer</h2><p class="hint">Per JSON-bestand de laatste meting in die kamer. Kleur = BSSID, getal = RSSI in dBm.</p></div></div><div class="table-wrap"><table><thead><tr><th>Kamer</th>${ds.map(d=>`<th class="compare-file">${esc(d.name)}<div class="minor">${esc(val(d.data.verwacht_ssid))}</div></th>`).join('')}</tr></thead><tbody>`;
+    for(const room of rooms){
+      html+=`<tr><td class="room">${esc(room.label)}</td>`;
+      for(const d of ds){
+        const m=room.values.get(d.name);
+        html+=`<td class="compare-cell">${m ? `<div class="strength ${quality(m.rssi_dbm)}">${esc(fmtDb(m.rssi_dbm))}</div><div>${apPill(map,m.bssid)}</div><div class="mono minor">${esc(val(m.bssid))}</div>` : '<span class="minor">Geen meting</span>'}</td>`;
+      }
+      html+='</tr>';
+    }
+    html+=`</tbody></table></div>${legend(map)}</section>`;
+    html+=`<section class="panel section"><div class="heading"><div><h2>Overzicht per meetronde</h2><p class="hint">Kies hierboven een afzonderlijk bestand voor grafiek, meetvolgorde en roaming.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bestand</th><th>SSID</th><th>Metingen</th><th>Accesspoints</th><th>Wissels</th><th>Gem. RSSI</th></tr></thead><tbody>`;
+    for(const d of ds){const ms=readings(d.data),dbs=ms.map(m=>num(m.rssi_dbm)).filter(n=>n!==null);html+=`<tr><td class="room">${esc(d.name)}</td><td>${esc(val(d.data.verwacht_ssid))}</td><td>${ms.length}</td><td>${uniq(ms.map(m=>apKey(m.bssid))).length}</td><td>${ms.filter((m,i)=>switchType(m,i,ms)===true).length}</td><td>${average(dbs)} dBm</td></tr>`;}
+    html+=`</tbody></table></div></section>`;
+    $('app').innerHTML=html;
+  }
+
+  function status(message='',type='') { $('status').textContent=message; $('status').className=`status ${type}`; }
+  function render() {
+    const keys=[...datasets.keys()];
+    $('picker').hidden=!keys.length;
+    $('app').hidden=!keys.length;
+    $('empty').hidden=!!keys.length;
+    const sel=$('dataset');
+    sel.innerHTML=(keys.length>1?'<option value="__ALL__">Alle bestanden vergelijken</option>':'') + keys.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+    if(!datasets.has(selected) && selected!=='__ALL__') selected=keys.length>1?'__ALL__':keys[0]||'';
+    if(selected==='__ALL__' && keys.length===1) selected=keys[0];
+    sel.value=selected;
+    if(!keys.length){$('meta').textContent='';return;}
+    if(selected==='__ALL__') comparison();
+    else { const entry=datasets.get(selected); if (entry?.data) single(selected,entry.data); else {$('app').innerHTML='<div class="empty"><h2>Bestand niet beschikbaar</h2></div>';} }
+  }
+  async function loadCatalog(quiet=false) {
+    try {
+      const res=await fetch('./api/datasets?_='+Date.now(),{cache:'no-store'});
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const list=await res.json();
+      if(!Array.isArray(list)) throw new Error('Ongeldige bestandenlijst');
+      hasServer=true;
+      for(const k of [...datasets.keys()]) if(datasets.get(k).remote && !list.includes(k)) datasets.delete(k);
+      const errors=[];
+      for(const name of list){
+        if(typeof name !== 'string' || !name.toLowerCase().endsWith('.json')) continue;
+        try {
+          const response=await fetch('./'+encodeURIComponent(name)+'?_='+Date.now(),{cache:'no-store'});
+          if(!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data=await response.json();
+          if(!data || !Array.isArray(data.metingen)) throw new Error('geen veld "metingen" (array)');
+          datasets.set(name,{data,remote:true});
+        }catch(err){ errors.push(`${name}: ${err.message}`); datasets.delete(name); }
+      }
+      if(errors.length) status(`${errors.length} bestand(en) overgeslagen: ${errors.join(' | ')}`,'warning');
+      else if(!quiet) status(`${list.length} JSON-bestand(en) gevonden. Je kunt de bestanden bewerken en daarna op Vernieuwen klikken.`);
+      else status('');
+    } catch(err) {
+      hasServer=false;
+      if(!quiet || !datasets.size) status('Automatisch inlezen is niet actief. Start ./start.sh vanuit deze map, of selecteer JSON-bestanden met de knop hierboven.','warning');
+    }
+    render();
+  }
+  async function importFiles(files){
+    const errors=[];
+    for(const file of files){
+      if(!file.name.toLowerCase().endsWith('.json')) continue;
+      try{
+        const data=JSON.parse(await file.text());
+        if(!data || !Array.isArray(data.metingen)) throw new Error('geen veld "metingen" (array)');
+        let label=file.name;
+        if(datasets.has(label) && datasets.get(label).remote) label+=' (handmatig)';
+        datasets.set(label,{data,remote:false});
+        selected=label;
+      }catch(err){ errors.push(`${file.name}: ${err.message}`); }
+    }
+    status(errors.length ? `Niet ingelezen: ${errors.join(' | ')}` : `${files.length} bestand(en) geselecteerd. Handmatig geselecteerde bestanden blijven alleen in dit browsertabblad geladen.`,errors.length?'warning':'');
+    render();
+  }
+  $('dataset').addEventListener('change',ev=>{ selected=ev.target.value;render(); });
+  $('refresh').addEventListener('click',()=>loadCatalog());
+  for(const id of ['files','files-empty']) $(id).addEventListener('change',e=>{importFiles([...e.target.files]);e.target.value='';});
+  let drag=0;
+  document.addEventListener('dragenter',e=>{e.preventDefault();drag++;document.body.classList.add('dragging');});
+  document.addEventListener('dragover',e=>e.preventDefault());
+  document.addEventListener('dragleave',e=>{e.preventDefault();drag=Math.max(0,drag-1);if(!drag)document.body.classList.remove('dragging');});
+  document.addEventListener('drop',e=>{e.preventDefault();drag=0;document.body.classList.remove('dragging');if(e.dataTransfer?.files?.length)importFiles([...e.dataTransfer.files]);});
+  loadCatalog(true);
+})();
+</script>
+</body>
+</html>
